@@ -68,7 +68,9 @@
 
 /* ---------- RESET ---------- */
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+img { max-width: 100%; height: auto; }
+.page, .card, .card *, .grid { min-width: 0; }
 body {
     font-family: var(--font);
     background: var(--bg);
@@ -210,7 +212,7 @@ a:hover { text-decoration: underline; }
 /* ============================================================
    TABLA DE DATOS
    ============================================================ */
-.table-wrap { overflow-x: auto; }
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
 .data-table { width: 100%; border-collapse: collapse; font-size: var(--fs-body); }
 .data-table th {
     text-align: left; padding: var(--sp-3) var(--sp-4);
@@ -523,23 +525,114 @@ a:hover { text-decoration: underline; }
 @keyframes pulseGlow { 0% { box-shadow: 0 0 0 0 var(--teal); } 100% { box-shadow: 0 0 0 8px rgba(18,165,148,0); } }
 
 /* ============================================================
-   RESPONSIVE
+   RESPONSIVE — optimizado para móvil
+   Breakpoints: 1000px (tablet/stack) · 640px (móvil) · 400px (muy pequeño)
    ============================================================ */
+
+/* ---------- TABLET / STACK ---------- */
 @media (max-width: 1000px) {
     .cols-3, .cols-2, .cols-70-30, .cols-30-70, .cols-40-60, .cols-60-40, .meal-sched { grid-template-columns: 1fr; }
-    .topbar { flex-wrap: wrap; height: auto; padding: var(--sp-3) var(--sp-4); gap: var(--sp-3); }
-    .navtabs { width: 100%; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; }
-    .navtabs::-webkit-scrollbar { display: none; }
-    .navtabs button { flex-shrink: 0; }
+    .pet-stats { grid-template-columns: 1fr 1fr; }
 }
+
+/* ---------- MÓVIL ---------- */
 @media (max-width: 640px) {
-    .page { padding: var(--sp-4) var(--sp-3); }
-    .form-row { grid-template-columns: 1fr; }
-    .mini-grid { grid-template-columns: 1fr; }
+    :root {
+        --header-h: 56px;
+        --fs-h1: 1.2rem;
+    }
+
+    /* Header / Nav */
+    .topbar {
+        flex-wrap: wrap; height: auto;
+        padding: var(--sp-3) var(--sp-3);
+        gap: var(--sp-2);
+        position: sticky; top: 0;
+    }
+    .topbar .brand { flex: 1; min-width: 0; }
+    .brand .brand-name { font-size: 1rem; }
+    .brand .brand-logo { width: 34px; height: 34px; }
     .brand-sub, .header-hint { display: none; }
-    #toast { left: 12px; right: 12px; }
-    .toast { min-width: 0; }
+    .clock-pill { display: none; }
+    .navtabs {
+        width: 100%; flex-wrap: nowrap; overflow-x: auto;
+        -webkit-overflow-scrolling: touch; scrollbar-width: none;
+        justify-content: flex-start; padding-bottom: 2px;
+    }
+    .navtabs::-webkit-scrollbar { display: none; }
+    .navtabs button { flex-shrink: 0; min-height: 44px; padding: 8px 12px; }
+    .navtabs button svg { width: 18px; height: 18px; }
+    .navtabs button .tab-dot { display: none; }
+
+    /* Layout */
+    .page { padding: var(--sp-4) var(--sp-4); }
+    .page-head { flex-direction: column; align-items: flex-start; gap: var(--sp-2); }
+    .page-head h1 { font-size: var(--fs-h1); }
+    .page-head .page-sub { font-size: var(--fs-xs); }
+    .grid { gap: var(--sp-4); }
+
+    /* Cards */
+    .card { padding: var(--sp-4); border-radius: var(--r-md); }
+    .card:hover { box-shadow: var(--shadow-md); }
+
+    /* Home */
+    .pet-stats { grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
+    .pet-stat { padding: var(--sp-2); }
+    .pet-stat .ps-value { font-size: 1rem; }
+    .mini-card { padding: var(--sp-3); }
+
+    /* Formularios (evita zoom automático en iOS: inputs >= 16px) */
+    .form-row { grid-template-columns: 1fr; gap: var(--sp-3); }
+    .form-group input, .form-group select, .form-group textarea {
+        font-size: 16px; padding: 12px;
+    }
+    .form-group select { min-height: 44px; }
+
+    /* Botones táctiles */
+    .btn { min-height: 44px; }
+    .btn-sm { min-height: 38px; }
+    .btn-danger { min-height: 38px; }
+
+    /* Tablas: más compactas, scroll horizontal suave */
+    .table-wrap { margin: 0 calc(var(--sp-4) * -1); padding: 0 var(--sp-4); }
+    .data-table { min-width: 560px; }
+    .data-table th, .data-table td { padding: var(--sp-3); }
+
+    /* Calendario: celdas más grandes táctiles */
+    .calendar-grid .day { padding: var(--sp-2) 0; }
+
+    /* Meal schedule: apilado y ancho completo */
+    .meal-sched { grid-template-columns: 1fr; gap: var(--sp-3); }
+
+    /* Historial: filtros no flotantes */
+    .filter-side { position: static; margin-top: var(--sp-4); }
+
+    /* Timeline: más espacio táctil */
+    .timeline { padding-left: var(--sp-6); }
+
+    /* Gráfico */
+    .chart-box { height: 200px; }
+
+    /* Toast ocupa ancho útil */
+    #toast { left: 12px; right: 12px; top: calc(var(--header-h) + 8px); }
+    .toast { min-width: 0; width: 100%; }
+
+    /* Pet foto más discreta en móvil */
+    .pet-photo { aspect-ratio: 16/9; margin-bottom: var(--sp-3); }
 }
+
+/* ---------- MÓVIL MUY PEQUEÑO ---------- */
+@media (max-width: 400px) {
+    .page { padding: var(--sp-3); }
+    .brand .brand-name { font-size: 0.95rem; }
+    .navtabs button { padding: 8px 10px; font-size: var(--fs-xs); }
+    .pet-stats { grid-template-columns: 1fr; }
+    .chart-summary { flex-direction: column; align-items: flex-start; gap: var(--sp-2); }
+    .meal-block { flex-direction: column; text-align: center; }
+    .data-table th, .data-table td { padding: var(--sp-2); }
+}
+
+/* ---------- IMPRESIÓN ---------- */
 @media print {
     .topbar, .btn { display: none !important; }
     .page { display: block !important; animation: none; }
