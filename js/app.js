@@ -22,6 +22,12 @@ const APP = (function () {
         setTimeout(() => t.remove(), 3500);
     }
 
+    function refreshIcons() {
+        if (typeof lucide !== 'undefined' && lucide.createIcons) {
+            try { lucide.createIcons(); } catch (e) {}
+        }
+    }
+
     function calcAge(birth) {
         if (!birth) return '—';
         const b = new Date(birth), now = new Date();
@@ -40,6 +46,8 @@ const APP = (function () {
             }
             renderProfile();
             renderRecentActivity();
+            renderKpis();
+            refreshIcons();
         } catch (e) {
             console.error('Init DB error', e);
         }
@@ -57,7 +65,8 @@ const APP = (function () {
             if (page === 'desparasitacion') renderAllDeworming();
             if (page === 'alimentacion') { loadFoodForm(); renderWeightChart(); renderMealSchedule(); renderFoodHistory(); }
             if (page === 'historial') renderHistory();
-            if (page === 'perfil') { renderProfile(); renderRecentActivity(); }
+            if (page === 'perfil') { renderProfile(); renderRecentActivity(); renderKpis(); }
+            refreshIcons();
         });
     }
 
@@ -118,6 +127,24 @@ const APP = (function () {
             setVal('pName', p.name); setVal('pBirth', p.birth); setVal('pBreed', p.breed);
             setVal('pWeight', p.weight); setVal('pSex', p.sex); setVal('pColor', p.color);
             setVal('pVet', p.vet); setVal('pVetPhone', p.vetPhone); setVal('pRut', p.rut);
+        });
+    }
+
+    function renderKpis() {
+        DB.get().then(db => {
+            const p = db.profile || {};
+            const vaccines = db.vaccines || [];
+            const deworming = db.deworming || [];
+            const upcoming = (arr) => arr
+                .filter(x => x.next && new Date(x.next) >= new Date(new Date().toISOString().slice(0,10)))
+                .sort((a, b) => String(a.next).localeCompare(b.next))[0];
+            const nextVax = upcoming(vaccines);
+            const nextDesp = upcoming(deworming);
+            setVal('kpiNextVax', nextVax ? fmtDate(nextVax.next) : '—');
+            setVal('kpiNextDesp', nextDesp ? fmtDate(nextDesp.next) : '—');
+            setVal('kpiWeight', p.weight ? p.weight + ' kg' : '—');
+            const total = vaccines.length + deworming.length + (db.controls || []).length + (db.notes || []).length + (db.weights || []).length;
+            setVal('kpiTotal', total);
         });
     }
 
@@ -201,23 +228,22 @@ const APP = (function () {
         if (!db) db = await DB.get();
         const el = $('vaccineCard'); const p = db.profile || {}; const vs = db.vaccines || [];
         if (!vs.length && !p.name) { el.innerHTML = '<p class="empty">Sin vacunas registradas.</p>'; return; }
-        let h = '<div style="border:2px solid #4CAF50;border-radius:10px;padding:1rem;text-align:center">';
-        h += '<div style="font-size:1.5rem">🐱</div>';
-        h += '<div style="font-weight:700;font-size:1rem;margin:0.3rem 0">' + esc(p.name || '—') + '</div>';
-        h += '<div style="font-size:0.75rem;color:#777">' + (p.breed || '') + (p.sex ? ' · ' + p.sex : '') + (p.weight ? ' · ' + p.weight + ' kg' : '') + '</div>';
-        if (p.rut) h += '<div style="font-size:0.7rem;color:#777">ID: ' + esc(p.rut) + '</div>';
+        let h = '<div class="vaccine-card">';
+        h += '<div class="vc-logo">🐱</div>';
+        h += '<div style="font-weight:800;font-size:1rem;margin:0.3rem 0;color:var(--gray-900)">' + esc(p.name || '—') + '</div>';
+        h += '<div style="font-size:0.75rem;color:var(--gray-500)">' + (p.breed || '') + (p.sex ? ' · ' + p.sex : '') + (p.weight ? ' · ' + p.weight + ' kg' : '') + '</div>';
+        if (p.rut) h += '<div style="font-size:0.7rem;color:var(--gray-500)">ID: ' + esc(p.rut) + '</div>';
         if (vs.length) {
             h += '<table style="width:100%;margin-top:0.8rem;font-size:0.75rem;border-collapse:collapse">';
-            h += '<tr style="background:#4CAF50;color:white"><th style="padding:0.3rem;text-align:left">Vacuna</th><th style="padding:0.3rem;text-align:left">Fecha</th><th style="padding:0.3rem;text-align:left">Estado</th></tr>';
+            h += '<tr style="background:var(--brand-500);color:white"><th style="padding:0.3rem;text-align:left">Vacuna</th><th style="padding:0.3rem;text-align:left">Fecha</th><th style="padding:0.3rem;text-align:left">Estado</th></tr>';
             vs.forEach(vx => {
                 const past = vx.next && new Date(vx.next) < new Date();
-                const sc = past ? 'background:#FFEBEE;color:#C62828' : 'background:#E8F5E9;color:#2E7D32';
                 const st = past ? 'VENCIDO' : (vx.next ? 'OK' : 'SIN REF.');
-                h += '<tr><td style="padding:0.3rem;border-bottom:1px solid #eee;font-size:0.8rem;text-align:left"><strong>' + esc(vx.type) + '</strong></td><td style="padding:0.3rem;border-bottom:1px solid #eee;font-size:0.8rem">' + fmtDate(vx.date) + '</td><td style="padding:0.3rem;border-bottom:1px solid #eee"><span style="' + sc + ';padding:0.15rem 0.5rem;border-radius:10px;font-size:0.7rem;font-weight:600">' + st + '</span></td></tr>';
+                h += '<tr><td style="padding:0.3rem;border-bottom:1px solid var(--gray-200);font-size:0.8rem;text-align:left"><strong>' + esc(vx.type) + '</strong></td><td style="padding:0.3rem;border-bottom:1px solid var(--gray-200);font-size:0.8rem">' + fmtDate(vx.date) + '</td><td style="padding:0.3rem;border-bottom:1px solid var(--gray-200)"><span class="status ' + (past ? 'status-danger' : 'status-ok') + '">' + st + '</span></td></tr>';
             });
             h += '</table>';
         }
-        h += '<div style="margin-top:0.5rem;font-size:0.7rem;color:#777">Generado por Abrilcita · ' + new Date().toLocaleDateString('es-CL') + '</div></div>';
+        h += '<div style="margin-top:0.5rem;font-size:0.7rem;color:var(--gray-500)">Generado por Abrilcita · ' + new Date().toLocaleDateString('es-CL') + '</div></div>';
         el.innerHTML = h;
     }
 
@@ -291,23 +317,40 @@ const APP = (function () {
         });
     }
 
+    let _weightChart = null;
     async function renderWeightChart() {
         const db = await DB.get();
-        const weights = db.weights || []; const el = $('weightChart');
-        const last6 = weights.slice(-6);
-        if (!last6.length) {
-            el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;width:100%;color:#777;font-size:0.85rem">Sin datos de peso. Guarda el perfil.</div>';
-            $('chartWeight').textContent = (db.profile && db.profile.weight) || '—';
-            return;
-        }
-        const max = Math.max(...last6.map(w => parseFloat(w.w)));
-        el.innerHTML = last6.map(w => {
-            const pct = (parseFloat(w.w) / max) * 80 + 20;
-            let m = '—';
-            try { m = new Date(w.d + 'T12:00:00').toLocaleDateString('es-CL', { month: 'short' }); } catch (e) {}
-            return '<div class="chart-bar" style="height:' + pct + '%"><span class="bar-label">' + w.w + '</span><span class="bar-month">' + m + '</span></div>';
-        }).join('');
-        $('chartWeight').textContent = last6[last6.length - 1].w + ' kg';
+        const el = $('weightChart');
+        if (!el) return;
+        const weights = db.weights || [];
+        const listed = weights.slice(-12);
+        const cur = (db.profile && db.profile.weight) ? parseFloat(db.profile.weight) : (listed.length ? parseFloat(listed[listed.length-1].w) : null);
+        if ($('chartWeight')) $('chartWeight').textContent = cur ? cur + ' kg' : '—';
+        if (_weightChart) { _weightChart.destroy(); _weightChart = null; }
+        if (!weights.length) { return; }
+        const labels = listed.map(w => { const d = new Date(w.d + 'T12:00:00'); return d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short' }); });
+        const data = listed.map(w => parseFloat(w.w));
+        _weightChart = new Chart(el, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Peso (kg)', data,
+                    borderColor: '#F59E0B', backgroundColor: 'rgba(245,158,11,0.18)',
+                    fill: true, tension: 0.35,
+                    pointBackgroundColor: '#F59E0B', pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false },
+                    tooltip: { backgroundColor: '#1F2937', titleColor: '#FDE68A', bodyColor: '#fff', cornerRadius: 8, padding: 10 } },
+                scales: {
+                    y: { beginAtZero: false, grid: { color: '#F3F4F6' }, ticks: { color: '#9CA3AF' } },
+                    x: { grid: { display: false }, ticks: { color: '#9CA3AF' } }
+                }
+            }
+        });
     }
 
     function renderMealSchedule() {
