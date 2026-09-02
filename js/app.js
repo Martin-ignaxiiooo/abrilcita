@@ -28,6 +28,128 @@ const APP = (function () {
         }
     }
 
+    // ---------- DINAMISMO: animaciones & feedback en vivo ----------
+
+    // Anima un número desde 0 hasta el valor en el elemento dado
+    function animateValue(el, to, opts = {}) {
+        if (!el) return;
+        const { suffix = '', duration = 600, decimals = 0 } = opts;
+        const target = parseFloat(to) || 0;
+        el.textContent = '0' + suffix;
+        const start = performance.now();
+        function step(now) {
+            const p = Math.min((now - start) / duration, 1);
+            const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
+            let v = (target * eased).toFixed(decimals);
+            if (decimals === 0) v = String(Math.round(target * eased));
+            el.textContent = v + suffix;
+            if (p < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+    }
+
+    // Agrega aparición escalonada a filas/items de una lista
+    function staggerRows(container, selector = 'tr') {
+        const rows = container ? container.querySelectorAll(selector) : [];
+        rows.forEach((row, i) => {
+            row.classList.remove('stagger-in');
+            row.style.animationDelay = (i * 45) + 'ms';
+            // Re-trigger animation
+            void row.offsetWidth;
+            row.classList.add('stagger-in');
+        });
+    }
+
+    // Destello/pulso temporal sobre un elemento para "avisar" actualización
+    function pulse(el) {
+        if (!el) return;
+        el.classList.remove('pulse');
+        void el.offsetWidth;
+        el.classList.add('pulse');
+    }
+
+    // Estado de guardado en un botón (spinner + deshabilitado)
+    function using(btn) {
+        if (!btn) return { end: function () {} };
+        const orig = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Guardando…';
+        return {
+            end() { btn.disabled = false; btn.innerHTML = orig; }
+        };
+    }
+
+    // Sincroniza el estado del elemento con su error en vivo
+    function setFieldError(input, message) {
+        if (!input) return;
+        const wrap = input.parentNode;
+        let errEl = wrap.querySelector('.field-error');
+        if (message) {
+            input.classList.add('invalid');
+            if (!errEl) {
+                errEl = document.createElement('small');
+                errEl.className = 'field-error';
+                wrap.appendChild(errEl);
+            }
+            errEl.textContent = message;
+            errEl.style.animation = 'none';
+            void errEl.offsetWidth;
+            errEl.style.animation = '';
+        } else {
+            input.classList.remove('invalid');
+            if (errEl) errEl.remove();
+        }
+    }
+
+    // Vincula validación en vivo a un formulario: revalida todo el form en cada 'input'
+    // y muestra errores por campo al instante.
+    function bindLiveValidation(formId, prefix, validator, fields) {
+        const inputs = fields.map(k => $((prefix === 'p' ? 'p' : prefix) + k)).filter(Boolean);
+        const collect = () => {
+            const data = {};
+            fields.forEach(k => data[k] = val((prefix === 'p' ? 'p' : prefix) + k));
+            return data;
+        };
+        const apply = () => {
+            const errors = validator(collect());
+            fields.forEach(k => {
+                const el = $((prefix === 'p' ? 'p' : prefix) + k);
+                if (el) setFieldError(el, errors[k] || '');
+            });
+        };
+        inputs.forEach(inp => {
+            inp.addEventListener('input', apply);
+            inp.addEventListener('change', apply);
+        });
+    }
+
+    // Contador de caracteres en vivo sobre una textarea
+    function bindCharCount(id, max) {
+        const ta = $(id);
+        if (!ta || ta.dataset.charCount === '1') return;
+        ta.dataset.charCount = '1';
+        const counter = document.createElement('small');
+        counter.className = 'char-count';
+        ta.insertAdjacentElement('afterend', counter);
+        function update() {
+            const n = ta.value.length;
+            counter.textContent = n + ' / ' + max;
+            counter.classList.toggle('over', n > max);
+        }
+        ta.addEventListener('input', update);
+        update();
+    }
+
+    // Live clock en la barra superior
+    function startClock() {
+        function tick() {
+            const el = $('clock');
+            if (el) el.textContent = new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+        }
+        tick();
+        setInterval(tick, 20000);
+    }
+
     function calcAge(birth) {
         if (!birth) return '—';
         const b = new Date(birth), now = new Date();
@@ -55,7 +177,20 @@ const APP = (function () {
         // Configurar foto upload
         $('catPhoto').addEventListener('change', handlePhotoUpload);
 
-        // Configurar filtros de historial + notas
+        // Dinamismo: reloj + validación en vivo + contador de caracteres
+        startClock();
+        bindLiveValidation('formP', 'p', VALIDATORS.validateProfile, ['name','birth','breed','weight','rut','vetPhone','vet','color']);
+        bindLiveValidation('formVax', 'vax', VALIDATORS.validateVaccine, ['type','date','next','cost','lot','lab','vet','notes']);
+        bindLiveValidation('formDesp', 'desp', VALIDATORS.validateDeworming, ['type','date','next','product','dose','weight','cost']);
+        bindLiveValidation('formFC', 'foodChange', VALIDATORS.validateFoodChange, ['date','desc']);
+        bindLiveValidation('formNote', 'note', VALIDATORS.validateNote, ['date','title']);
+        bindCharCount('foodNotes', 300);
+        bindCharCount('foodChangeReason', 300);
+        bindCharCount('nDescription', 300);
+        bindCharCount('despNotes', 300);
+        bindCharCount('vaxNotes', 300);
+
+        // Configurar router de navegación
         ROUTER.init();
 
         // Listener de cambio de ruta
