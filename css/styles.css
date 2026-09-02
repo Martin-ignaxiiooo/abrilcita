@@ -299,6 +299,7 @@ a:hover { text-decoration: underline; }
 }
 .pet-photo img, .pet-photo .pet-emoji { width: 100%; height: 100%; object-fit: cover; display: flex; align-items: center; justify-content: center; }
 .pet-photo .pet-emoji { font-size: 5rem; color: #fff; }
+.pet-photo .pet-fallback-icon { width: 88px; height: 88px; color: #fff; opacity: 0.85; }
 .pet-photo input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .pet-photo::after {
     content: 'Cambiar foto'; position: absolute; inset: auto 0 0 0;
@@ -429,7 +430,8 @@ a:hover { text-decoration: underline; }
 }
 .filter-side h4 svg { width: 17px; height: 17px; color: var(--teal-bright); }
 .filter-check { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) 0; font-size: var(--fs-body); color: #D7DEEF; cursor: pointer; }
-.filter-check input { width: 18px; height: 18px; accent-color: var(--teal-bright); }
+.filter-check svg { width: 17px; height: 17px; color: var(--teal-bright); flex-shrink: 0; }
+.filter-check input { width: 18px; height: 18px; accent-color: var(--teal-bright); margin-left: auto; }
 .filter-check:hover { color: #fff; }
 .filter-side .filter-cta {
     width: 100%; margin-top: var(--sp-4);

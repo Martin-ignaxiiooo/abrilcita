@@ -63,7 +63,7 @@
                     <span class="card-title">Vista general</span>
                 </div>
                 <div class="pet-photo">
-                    <div class="pet-emoji" id="catAvatar">🐱</div>
+                    <div class="pet-emoji" id="catAvatar"><i data-lucide="cat" class="pet-fallback-icon"></i></div>
                     <input type="file" id="catPhoto" accept="image/*">
                 </div>
                 <div class="pet-name-row">
@@ -420,11 +420,11 @@
         <div class="grid cols-30-70">
             <div class="filter-side">
                 <h4><i data-lucide="filter"></i> Filtros</h4>
-                <label class="filter-check"><input type="checkbox" id="fVax" checked> 💉 Vacunas</label>
-                <label class="filter-check"><input type="checkbox" id="fFood" checked> 🍽️ Alimentación</label>
-                <label class="filter-check"><input type="checkbox" id="fVisits" checked> 🏥 Controles</label>
-                <label class="filter-check"><input type="checkbox" id="fDesp" checked> 💊 Desparasitación</label>
-                <label class="filter-check"><input type="checkbox" id="fNotes" checked> 📝 Notas</label>
+                <label class="filter-check"><i data-lucide="syringe"></i><input type="checkbox" id="fVax" checked> Vacunas</label>
+                <label class="filter-check"><i data-lucide="utensils-crossed"></i><input type="checkbox" id="fFood" checked> Alimentación</label>
+                <label class="filter-check"><i data-lucide="stethoscope"></i><input type="checkbox" id="fVisits" checked> Controles</label>
+                <label class="filter-check"><i data-lucide="bug"></i><input type="checkbox" id="fDesp" checked> Desparasitación</label>
+                <label class="filter-check"><i data-lucide="notebook-pen"></i><input type="checkbox" id="fNotes" checked> Notas</label>
                 <button class="filter-cta" onclick="APP.renderApplyFilters()"><i data-lucide="check-check"></i> Aplicar Filtros</button>
 
                 <div class="fs-block">

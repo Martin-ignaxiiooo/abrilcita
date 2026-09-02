@@ -494,7 +494,7 @@ const APP = (function () {
         const db = await DB.get();
         const el = $('vaxBody');
         renderCalendar();
-        if (!(db.vaccines || []).length) { el.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon"><i data-lucide="syringe"></i></div><div class="empty-title">Sin vacunas registradas</div></div></td></tr>'; refreshIcons(); renderVaccineCard(); return; }
+        if (!(db.vaccines || []).length) { el.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon"><i data-lucide="syringe"></i></div><div class="empty-title">Sin vacunas registradas</div><div class="empty-text">Agrega la primera vacuna para empezar el carnet.</div><button class="btn btn-primary" onclick="APP.focusField(\'vaxType\')">Registrar vacuna</button></div></td></tr>'; refreshIcons(); renderVaccineCard(); return; }
         el.innerHTML = db.vaccines.map(vx => {
             const past = vx.next && new Date(vx.next) < new Date();
             const st = past ? '<span class="status status-danger"><i data-lucide="alert-triangle"></i> Vencido</span>' : (vx.next ? '<span class="status status-ok"><i data-lucide="check-circle-2"></i> Al día</span>' : '<span class="status status-pend"><i data-lucide="clock"></i> Sin ref.</span>');
@@ -502,6 +502,7 @@ const APP = (function () {
         }).join('');
         refreshIcons();
         renderVaccineCard(db);
+        refreshIcons();
     }
 
     async function delVaccine(id) {
@@ -516,15 +517,15 @@ const APP = (function () {
     async function renderVaccineCard(db) {
         if (!db) db = await DB.get();
         const el = $('vaccineCard'); const p = db.profile || {}; const vs = db.vaccines || [];
-        if (!vs.length && !p.name) { el.innerHTML = '<p class="empty">Sin vacunas registradas.</p>'; return; }
+        if (!vs.length && !p.name) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><i data-lucide="syringe"></i></div><div class="empty-title">Carnet de vacunas</div><div class="empty-text">Registra la primera vacuna para ver el carnet.</div></div>'; refreshIcons(); return; }
         let h = '<div class="vaccine-card">';
-        h += '<div class="vc-logo">🐱</div>';
+        h += '<div class="vc-logo"><i data-lucide="heart-pulse" style="width:40px;height:40px;color:var(--teal-dark)"></i></div>';
         h += '<div style="font-weight:800;font-size:1rem;margin:0.3rem 0;color:var(--gray-900)">' + esc(p.name || '—') + '</div>';
         h += '<div style="font-size:0.75rem;color:var(--gray-500)">' + (p.breed || '') + (p.sex ? ' · ' + p.sex : '') + (p.weight ? ' · ' + p.weight + ' kg' : '') + '</div>';
         if (p.rut) h += '<div style="font-size:0.7rem;color:var(--gray-500)">ID: ' + esc(p.rut) + '</div>';
         if (vs.length) {
             h += '<table style="width:100%;margin-top:0.8rem;font-size:0.75rem;border-collapse:collapse">';
-            h += '<tr style="background:var(--brand-500);color:white"><th style="padding:0.3rem;text-align:left">Vacuna</th><th style="padding:0.3rem;text-align:left">Fecha</th><th style="padding:0.3rem;text-align:left">Estado</th></tr>';
+            h += '<tr style="background:var(--teal);color:white"><th style="padding:0.3rem;text-align:left">Vacuna</th><th style="padding:0.3rem;text-align:left">Fecha</th><th style="padding:0.3rem;text-align:left">Estado</th></tr>';
             vs.forEach(vx => {
                 const past = vx.next && new Date(vx.next) < new Date();
                 const st = past ? 'VENCIDO' : (vx.next ? 'OK' : 'SIN REF.');
@@ -558,7 +559,7 @@ const APP = (function () {
         const db = await DB.get();
         const el = $('despBody');
         if (!el) return;
-        if (!(db.deworming || []).length) { el.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon"><i data-lucide="droplet"></i></div><div class="empty-title">Sin registros de desparasitación</div></div></td></tr>'; refreshIcons(); return; }
+        if (!(db.deworming || []).length) { el.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon"><i data-lucide="droplet"></i></div><div class="empty-title">Sin registros de desparasitación</div><div class="empty-text">Registra la primera aplicación para controlar parásitos.</div><button class="btn btn-primary" onclick="APP.focusField(\'despType\')">Registrar</button></div></td></tr>'; refreshIcons(); return; }
         el.innerHTML = db.deworming.map(dw => {
             const icon = dw.type === 'Externa' ? 'droplet' : (dw.type === 'Ambas' ? 'shield' : 'syringe');
             return '<tr><td><div style="display:flex;align-items:center;gap:8px"><i data-lucide="' + icon + '" style="width:16px;height:16px;color:var(--teal)"></i> ' + esc(dw.type) + '</div></td><td>' + fmtDate(dw.date) + '</td><td><strong>' + esc(dw.product || '—') + '</strong></td><td>' + esc(dw.dose || '—') + '</td><td>' + (dw.next ? fmtDate(dw.next) : '—') + '</td><td><button class="btn btn-danger btn-sm" onclick="APP.delDeworming(\'' + dw.id + '\')">✕</button></td></tr>';
@@ -685,10 +686,18 @@ const APP = (function () {
     async function renderFoodHistory() {
         const db = await DB.get();
         const el = $('foodHistory'); const ch = db.foodChanges || [];
-        if (!ch.length) { el.innerHTML = '<p class="empty">Sin cambios registrados.</p>'; return; }
-        el.innerHTML = ch.sort((a, b) => String(b.date).localeCompare(a.date)).map(c =>
-            '<div class="record"><div class="record-content"><strong>' + esc(c.desc) + '</strong><small>' + fmtDate(c.date) + (c.reason ? ' · ' + esc(c.reason) : '') + '</small></div><button class="btn btn-danger btn-sm" onclick="APP.delFoodChange(\'' + c.id + '\')">✕</button></div>'
-        ).join('');
+        if (!ch.length) {
+            el.innerHTML = '<div class="empty-state"><div class="empty-icon"><i data-lucide="history"></i></div><div class="empty-title">Sin cambios registrados</div><div class="empty-text">Registra un cambio de alimentación para llevarle el historial.</div></div>';
+            refreshIcons(); return;
+        }
+        el.innerHTML = '<div class="info-list">' + ch.sort((a, b) => String(b.date).localeCompare(a.date)).map(c =>
+            '<div class="info-item">' +
+            '<div class="ii-icon"><i data-lucide="utensils-crossed"></i></div>' +
+            '<div class="ii-body"><div class="ii-value">' + esc(c.desc) + '</div><div class="ii-label">' + fmtDate(c.date) + (c.reason ? ' · ' + esc(c.reason) : '') + '</div></div>' +
+            '<div class="ii-badge"><button class="btn btn-link btn-sm" onclick="APP.delFoodChange(\'' + c.id + '\')" title="Eliminar">Quitar</button></div>' +
+            '</div>'
+        ).join('') + '</div>';
+        refreshIcons();
     }
 
     async function delFoodChange(id) {
@@ -718,15 +727,18 @@ const APP = (function () {
         const el = $('historyBody'); const items = [];
         const fVax = $('fVax').checked, fDesp = $('fDesp').checked, fVis = $('fVisits').checked, fFood = $('fFood').checked, fNotes = $('fNotes').checked;
 
-        if (fVax) (db.vaccines || []).forEach(v => items.push({ date: v.date, cat: '💉 Vacuna', desc: v.type + (v.lot ? ' · Lote: ' + v.lot : ''), status: 'Completado', id: v.id, type: 'vax' }));
-        if (fDesp) (db.deworming || []).forEach(d => items.push({ date: d.date, cat: '💊 Desparasitación', desc: d.type + ' - ' + (d.product || ''), status: 'Completado', id: d.id, type: 'desp' }));
-        if (fVis) (db.controls || []).forEach(c => items.push({ date: c.date, cat: '🏥 Control', desc: c.type + ' - ' + (c.reason || c.result || ''), status: c.type === 'Urgencia' ? 'Urgencia' : 'Completado', id: c.id, type: 'ctrl' }));
-        if (fFood) (db.foodChanges || []).forEach(f => items.push({ date: f.date, cat: '🍽️ Alimentación', desc: f.desc, status: 'Cambio', id: f.id, type: 'fc' }));
-        if (fNotes) (db.notes || []).forEach(n => items.push({ date: n.date, cat: '📝 Nota', desc: n.title + (n.desc ? ' · ' + n.desc : ''), status: 'Nota', id: n.id, type: 'note' }));
+        const catIcons = { vax: 'syringe', desp: 'bug', ctrl: 'stethoscope', fc: 'utensils-crossed', note: 'notebook-pen' };
+        const catLabels = { vax: 'Vacuna', desp: 'Desparasitación', ctrl: 'Control', fc: 'Alimentación', note: 'Nota' };
+
+        if (fVax) (db.vaccines || []).forEach(v => items.push({ date: v.date, type: 'vax', cat: catLabels.vax, desc: v.type + (v.lot ? ' · Lote: ' + v.lot : ''), status: 'Completado', id: v.id }));
+        if (fDesp) (db.deworming || []).forEach(d => items.push({ date: d.date, type: 'desp', cat: catLabels.desp, desc: d.type + ' - ' + (d.product || ''), status: 'Completado', id: d.id }));
+        if (fVis) (db.controls || []).forEach(c => items.push({ date: c.date, type: 'ctrl', cat: catLabels.ctrl, desc: c.type + ' - ' + (c.reason || c.result || ''), status: c.type === 'Urgencia' ? 'Urgencia' : 'Completado', id: c.id }));
+        if (fFood) (db.foodChanges || []).forEach(f => items.push({ date: f.date, type: 'fc', cat: catLabels.fc, desc: f.desc, status: 'Cambio', id: f.id }));
+        if (fNotes) (db.notes || []).forEach(n => items.push({ date: n.date, type: 'note', cat: catLabels.note, desc: n.title + (n.desc ? ' · ' + n.desc : ''), status: 'Nota', id: n.id }));
 
         items.sort((a, b) => String(b.date).localeCompare(a.date));
 
-        if (!items.length) { el.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="empty-icon"><i data-lucide="clipboard-list"></i></div><div class="empty-title">Sin eventos</div></div></td></tr>'; refreshIcons(); }
+        if (!items.length) { el.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="empty-icon"><i data-lucide="clipboard-list"></i></div><div class="empty-title">Sin eventos</div><div class="empty-text">Comienza registrando una vacuna, control o nota.</div></div></td></tr>'; refreshIcons(); }
         else {
             el.innerHTML = items.map(i => {
                 const completed = i.status === 'Completado';
@@ -738,7 +750,7 @@ const APP = (function () {
                 const action = i.type === 'ctrl' ? 'Ver notas'
                     : i.type === 'fc' ? 'Ver plan'
                     : (i.type === 'note' ? 'Ver nota' : 'Ver registro');
-                return '<tr><td>' + fmtDate(i.date) + '</td><td>' + i.cat + '</td><td><strong>' + esc(i.desc) + '</strong></td><td>' + badge + '</td>' +
+                return '<tr><td>' + fmtDate(i.date) + '</td><td><span style="display:inline-flex;align-items:center;gap:7px"><i data-lucide="' + catIcons[i.type] + '" style="width:16px;height:16px;color:var(--teal)"></i>' + i.cat + '</span></td><td><strong>' + esc(i.desc) + '</strong></td><td>' + badge + '</td>' +
                     '<td><button class="btn btn-link btn-sm" onclick="APP.delHistoryItem(\'' + i.type + '\',\'' + i.id + '\')" title="Eliminar">' + action + '</button></td></tr>';
             }).join('');
             refreshIcons();
@@ -747,12 +759,13 @@ const APP = (function () {
         const sum = $('historySummary');
         const overdue = (db.vaccines || []).filter(v => v.next && new Date(v.next) < new Date()).length;
         sum.innerHTML = '<div style="font-size:0.85rem;display:grid;gap:0.4rem">' +
-            '<div>💉 Vacunas: <strong>' + (db.vaccines || []).length + '</strong>' + (overdue ? ' <span style="color:#C62828">(' + overdue + ' vencidas)</span>' : '') + '</div>' +
-            '<div>💊 Desparasitaciones: <strong>' + (db.deworming || []).length + '</strong></div>' +
-            '<div>🏥 Controles: <strong>' + (db.controls || []).length + '</strong></div>' +
-            '<div>📝 Notas: <strong>' + (db.notes || []).length + '</strong></div>' +
-            '<div>⚖️ Peso: <strong>' + ((db.profile && db.profile.weight) || '—') + ' kg</strong></div>' +
+            '<div><i data-lucide="syringe" style="width:14px;height:14px;color:var(--teal);margin-right:4px"></i>Vacunas: <strong>' + (db.vaccines || []).length + '</strong>' + (overdue ? ' <span style="color:#C62828">(' + overdue + ' vencidas)</span>' : '') + '</div>' +
+            '<div><i data-lucide="bug" style="width:14px;height:14px;color:var(--teal);margin-right:4px"></i>Desparasitaciones: <strong>' + (db.deworming || []).length + '</strong></div>' +
+            '<div><i data-lucide="stethoscope" style="width:14px;height:14px;color:var(--teal);margin-right:4px"></i>Controles: <strong>' + (db.controls || []).length + '</strong></div>' +
+            '<div><i data-lucide="notebook-pen" style="width:14px;height:14px;color:var(--teal);margin-right:4px"></i>Notas: <strong>' + (db.notes || []).length + '</strong></div>' +
+            '<div><i data-lucide="scale" style="width:14px;height:14px;color:var(--teal);margin-right:4px"></i>Peso: <strong>' + ((db.profile && db.profile.weight) || '—') + ' kg</strong></div>' +
             '</div>';
+        refreshIcons();
     }
 
     async function delHistoryItem(type, id) {
@@ -783,7 +796,7 @@ const APP = (function () {
     }
 
     async function clearAllData() {
-        if (!confirm('⚠️ Borrar TODOS los datos de Abrilcita?')) return;
+        if (!confirm('¿Borrar TODOS los datos de Abrilcita?')) return;
         if (!confirm('¿Definitivamente?')) return;
         if (DB.isSupabase()) {
             // En modo Supabase borrar tablas
@@ -803,13 +816,19 @@ const APP = (function () {
         return div.innerHTML;
     }
 
+    function focusField(id) {
+        const el = $(id);
+        if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
+    }
+
     // ============ EXPOSICIÓN PÚBLICA ============
     return {
         init, saveProfile, saveVaccine, delVaccine, saveDeworming, delDeworming,
         saveFood, saveFoodChange, delFoodChange, saveNote, delHistoryItem,
         renderApplyFilters, exportData, clearAllData,
         toggleProfileEdit, toggleDietEdit, newVisit, saveControl, delControl,
-        addMedication, delMedication, renderHome, renderVisits, renderMedications
+        addMedication, delMedication, renderHome, renderVisits, renderMedications,
+        focusField
     };
 })();
 
