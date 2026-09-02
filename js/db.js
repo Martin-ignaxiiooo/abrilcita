@@ -18,7 +18,8 @@ const DB = (function () {
         notes: [],
         food: {},
         foodChanges: [],
-        weights: []
+        weights: [],
+        medications: []
     });
 
     // ---------- SUPABASE CLIENT (se inicializa solo si es necesario) ----------

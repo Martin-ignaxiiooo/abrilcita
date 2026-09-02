@@ -4,15 +4,15 @@
    ================================================== */
 
 const ROUTER = (function () {
-    let currentPage = 'perfil';
-    const pages = ['perfil', 'vacunas', 'desparasitacion', 'alimentacion', 'historial'];
+    let currentPage = 'inicio';
+    const pages = ['inicio', 'vacunas', 'desparasitacion', 'alimentacion', 'controles', 'historial'];
 
     function init() {
         const nav = document.getElementById('mainNav');
         nav.addEventListener('click', function (e) {
-            if (e.target.tagName !== 'BUTTON') return;
-            const dest = e.target.dataset.page;
-            navigate(dest);
+            const btn = e.target.closest('button');
+            if (!btn || !btn.dataset.page) return;
+            navigate(btn.dataset.page);
         });
 
         // Manejar hash para deep-linking (ej: #/vacunas)
@@ -36,8 +36,8 @@ const ROUTER = (function () {
         document.getElementById(pageName).classList.add('active');
 
         // Actualizar botones nav
-        document.querySelectorAll('.nav-bar button').forEach(b => b.classList.remove('active'));
-        const btn = document.querySelector(`.nav-bar button[data-page="${pageName}"]`);
+        document.querySelectorAll('.navtabs button').forEach(b => b.classList.remove('active'));
+        const btn = document.querySelector(`.navtabs button[data-page="${pageName}"]`);
         if (btn) btn.classList.add('active');
 
         currentPage = pageName;

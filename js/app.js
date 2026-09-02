@@ -166,9 +166,8 @@ const APP = (function () {
             if (db.profile && db.profile.photo) {
                 $('catAvatar').innerHTML = '<img src="' + db.profile.photo + '">';
             }
-            renderProfile();
-            renderRecentActivity();
-            renderKpis();
+            renderHome();
+            renderDietStats();
             refreshIcons();
         } catch (e) {
             console.error('Init DB error', e);
@@ -186,9 +185,11 @@ const APP = (function () {
         bindLiveValidation('formNote', 'note', VALIDATORS.validateNote, ['date','title']);
         bindCharCount('foodNotes', 300);
         bindCharCount('foodChangeReason', 300);
-        bindCharCount('nDescription', 300);
+        bindCharCount('noteDesc', 300);
         bindCharCount('despNotes', 300);
         bindCharCount('vaxNotes', 300);
+        bindCharCount('cResult', 300);
+        bindCharCount('medInst', 200);
 
         // Configurar router de navegación
         ROUTER.init();
@@ -196,11 +197,12 @@ const APP = (function () {
         // Listener de cambio de ruta
         document.addEventListener('route:change', (e) => {
             const page = e.detail.page;
+            if (page === 'inicio') { renderHome(); renderDietStats(); }
             if (page === 'vacunas') renderAllVaccines();
             if (page === 'desparasitacion') renderAllDeworming();
-            if (page === 'alimentacion') { loadFoodForm(); renderWeightChart(); renderMealSchedule(); renderFoodHistory(); }
+            if (page === 'alimentacion') { loadFoodForm(); renderDietStats(); renderWeightChart(); renderMealSchedule(); renderFoodHistory(); }
+            if (page === 'controles') { renderVisits(); renderMedications(); }
             if (page === 'historial') renderHistory();
-            if (page === 'perfil') { renderProfile(); renderRecentActivity(); renderKpis(); }
             refreshIcons();
         });
     }
@@ -248,53 +250,205 @@ const APP = (function () {
             }
         }
         await DB.save(db);
-        renderProfile();
+        renderHome();
         toast('Perfil guardado correctamente.');
     }
 
-    function renderProfile() {
+    // ---------- INICIO / HOME DASHBOARD ----------
+    function renderHome() {
         DB.get().then(db => {
             const p = db.profile || {};
-            $('displayName').textContent = p.name || 'Sin nombre';
-            $('displayMeta').textContent = 'Edad: ' + calcAge(p.birth) + ' · Peso: ' + (p.weight || '—') + ' kg' + (p.breed ? ' · ' + p.breed : '');
-            const total = (db.vaccines || []).length + (db.deworming || []).length + (db.controls || []).length;
-            $('healthStatus').textContent = total > 0 ? 'Activo (' + total + ' registros)' : 'Sin datos';
+            // Brand + pet overview
+            if ($('brandName')) $('brandName').textContent = p.name || 'Abrilcita';
+            if ($('homeName')) $('homeName').textContent = p.name || 'Sin nombre';
+            if ($('homeAge')) $('homeAge').textContent = calcAge(p.birth);
+            if ($('homeWeight')) $('homeWeight').textContent = (p.weight ? p.weight + ' kg' : '—');
+            // Pre-cargar formulario de perfil
             setVal('pName', p.name); setVal('pBirth', p.birth); setVal('pBreed', p.breed);
             setVal('pWeight', p.weight); setVal('pSex', p.sex); setVal('pColor', p.color);
             setVal('pVet', p.vet); setVal('pVetPhone', p.vetPhone); setVal('pRut', p.rut);
+
+            // Health status
+            const total = (db.vaccines || []).length + (db.deworming || []).length + (db.controls || []).length;
+            const hs = $('homeHealth');
+            if (hs) { hs.textContent = total > 0 ? 'Excelente' : 'Sin datos'; hs.className = 'status ' + (total > 0 ? 'status-ok' : 'status-pend'); }
+            const vaxOk = statusOf(db.vaccines);
+            const despOk = statusOf(db.deworming);
+            const vaxS = $('homeVaxStatus'), despS = $('homeDespStatus');
+            if (vaxS) { vaxS.textContent = vaxOk === 'none' ? 'Sin registros' : (vaxOk ? 'Al día' : 'Un vencimiento'); vaxS.className = 'status ' + (vaxOk === 'none' ? 'status-pend' : (vaxOk ? 'status-ok' : 'status-danger')); }
+            if (despS) { despS.textContent = despOk === 'none' ? 'Sin registros' : (despOk ? 'Al día' : 'Pendiente'); despS.className = 'status ' + (despOk === 'none' ? 'status-pend' : (despOk ? 'status-ok' : 'status-danger')); }
+
+            // Upcoming alerts
+            renderAlerts(db);
         });
     }
 
-    function renderKpis() {
+    // true=al día, false=algo vencido, 'none'=sin datos
+    function statusOf(arr) {
+        const a = arr || [];
+        if (!a.length) return 'none';
+        return !a.some(x => x.next && new Date(x.next) < new Date());
+    }
+
+    function renderAlerts(db) {
+        const el = $('homeAlerts');
+        if (!el) return;
+        const alerts = [];
+        (db.vaccines || []).forEach(v => { if (v.next) alerts.push({ date: v.next, title: 'Vacuna: ' + (v.type || ''), kind: 'vacuna' }); });
+        (db.deworming || []).forEach(d => { if (d.next) alerts.push({ date: d.next, title: 'Desparasitación', kind: 'desp' }); });
+        alerts.sort((a, b) => String(a.date).localeCompare(b.date));
+        if (!alerts.length) {
+            el.innerHTML = '<div class="empty-state"><div class="empty-icon"><i data-lucide="bell"></i></div><div class="empty-title">Sin alertas</div><div class="empty-text">Los próximos vencimientos aparecerán aquí.</div></div>';
+            refreshIcons(); return;
+        }
+        const icons = { vacuna: 'syringe', desp: 'droplet' };
+        el.innerHTML = alerts.slice(0, 5).map((a, i) =>
+            '<div class="alert-item' + (i === 0 ? ' highlight' : '') + '">' +
+            '<div class="al-icon"><i data-lucide="' + icons[a.kind] + '"></i></div>' +
+            '<div class="al-body"><div class="al-title">' + esc(a.title) + '</div><div class="al-date">Vence el ' + fmtDate(a.date) + '</div></div>' +
+            '</div>'
+        ).join('');
+        refreshIcons();
+    }
+
+    function toggleProfileEdit() {
+        const card = $('profileEditCard');
+        if (!card) return;
+        const show = card.style.display === 'none';
+        card.style.display = show ? 'block' : 'none';
+        if (show) renderHome();
+        refreshIcons();
+        if (show) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ---------- ALIMENTACIÓN: minitarjetas + alertas ----------
+    function renderDietStats() {
         DB.get().then(db => {
-            const p = db.profile || {};
-            const vaccines = db.vaccines || [];
-            const deworming = db.deworming || [];
-            const upcoming = (arr) => arr
-                .filter(x => x.next && new Date(x.next) >= new Date(new Date().toISOString().slice(0,10)))
-                .sort((a, b) => String(a.next).localeCompare(b.next))[0];
-            const nextVax = upcoming(vaccines);
-            const nextDesp = upcoming(deworming);
-            setVal('kpiNextVax', nextVax ? fmtDate(nextVax.next) : '—');
-            setVal('kpiNextDesp', nextDesp ? fmtDate(nextDesp.next) : '—');
-            setVal('kpiWeight', p.weight ? p.weight + ' kg' : '—');
-            const total = vaccines.length + deworming.length + (db.controls || []).length + (db.notes || []).length + (db.weights || []).length;
-            setVal('kpiTotal', total);
+            const f = db.food || {};
+            const timesMap = { '1': '1 vez/día', '2': '2 veces/día', '3': '3 veces/día', 'libre': 'Libre' };
+            if ($('dietBrand')) $('dietBrand').textContent = f.brand || '—';
+            if ($('dietType')) $('dietType').textContent = f.type || '—';
+            if ($('dietAmount')) $('dietAmount').textContent = f.amount || '—';
+            if ($('dietTimes')) $('dietTimes').textContent = timesMap[f.times] || '—';
+            // restricciones
+            const set = new Set(String(f.restrictions || '').split(',').map(s => s.trim().toLowerCase()));
+            const map = { 'sin pollo': 'drNoPoll', 'sin lactosa': 'drNoLact', 'sin granos': 'drNoGranos', 'alta en proteinas': 'drHighProt' };
+            Object.keys(map).forEach(k => { const el = $(map[k]); if (el) el.checked = set.has(k); });
         });
     }
 
-    function renderRecentActivity() {
+    function toggleDietEdit() {
+        const card = $('dietEditCard');
+        if (!card) return;
+        const show = card.style.display === 'none';
+        card.style.display = show ? 'block' : 'none';
+        if (show) loadFoodForm();
+        refreshIcons();
+    }
+
+    // ---------- CONTROLES / VISITAS ----------
+    function newVisit() {
+        const form = $('visitForm');
+        if (!form) return;
+        form.style.display = 'block';
+        refreshIcons();
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    async function saveControl() {
+        const data = {
+            date: val('cDate'), type: val('cType'), reason: val('cReason'),
+            clinic: val('cClinic'), weight: val('cWeight'), cost: val('cCost'), result: val('cResult')
+        };
+        if (!data.date || !data.type) { toast('Completa fecha y tipo de control.', 'error'); return; }
+        const db = await DB.get();
+        db.controls.push({ id: DB.genId(), vetName: data.clinic, ...data });
+        await DB.save(db);
+        clearForm(['cDate', 'cType', 'cReason', 'cClinic', 'cWeight', 'cCost', 'cResult']);
+        document.getElementById('visitForm').style.display = 'none';
+        // registrar peso del control
+        if (data.weight) {
+            db.weights = db.weights || [];
+            const today = new Date().toISOString().slice(0, 10);
+            db.weights.push({ id: DB.genId(), d: data.date || today, w: data.weight });
+            await DB.save(db);
+        }
+        renderVisits();
+        renderHome();
+        toast('Visita registrada.');
+    }
+
+    function renderVisits() {
         DB.get().then(db => {
-            const el = $('recentActivity'); const items = [];
-            (db.vaccines || []).forEach(v => items.push({ date: v.date, icon: '💉', text: v.type, cls: 'green' }));
-            (db.deworming || []).forEach(d => items.push({ date: d.date, icon: '💊', text: d.type + ' - ' + (d.product || ''), cls: 'blue' }));
-            (db.controls || []).forEach(c => items.push({ date: c.date, icon: '🏥', text: c.type + ' - ' + (c.reason || c.result || ''), cls: 'orange' }));
-            items.sort((a, b) => String(b.date).localeCompare(a.date));
-            if (!items.length) { el.innerHTML = '<li><div class="act-icon green">📋</div><div><small>Sin actividad registrada</small></div></li>'; return; }
-            el.innerHTML = items.slice(0, 6).map(i =>
-                '<li><div class="act-icon ' + i.cls + '">' + i.icon + '</div><div><strong>' + i.text + '</strong><br><span class="act-date">' + fmtDate(i.date) + '</span></div></li>'
+            const el = $('visitsTimeline');
+            if (!el) return;
+            const visits = (db.controls || []).slice().sort((a, b) => String(b.date).localeCompare(a.date));
+            if (!visits.length) {
+                el.innerHTML = '<div class="empty-state"><div class="empty-icon"><i data-lucide="stethoscope"></i></div><div class="empty-title">Sin visitas registradas</div><div class="empty-text">Registra el primer control veterinario de Abrilcita.</div></div>';
+                refreshIcons(); return;
+            }
+            el.innerHTML = visits.map(v =>
+                '<div class="tl-item"><div class="tl-card">' +
+                '<div class="tl-date">' + fmtDate(v.date) + '</div>' +
+                '<div class="tl-reason">' + esc(v.type + (v.reason ? ' · ' + v.reason : '')) + '</div>' +
+                '<div class="tl-clinic"><i data-lucide="building-2"></i> ' + esc(v.clinic || v.vetName || 'Clínica') + '</div>' +
+                (v.result ? '<div style="font-size:var(--fs-sm);color:var(--gray-700)">' + esc(v.result) + '</div>' : '') +
+                '<button class="btn btn-link btn-sm" onclick="APP.delControl(\'' + v.id + '\')" style="margin-top:var(--sp-2)">Eliminar visita</button>' +
+                '</div></div>'
             ).join('');
+            refreshIcons();
         });
+    }
+
+    async function delControl(id) {
+        if (!confirm('¿Eliminar esta visita?')) return;
+        const db = await DB.get();
+        db.controls = db.controls.filter(c => c.id !== id);
+        await DB.save(db);
+        renderVisits();
+        renderHome();
+        toast('Visita eliminada.');
+    }
+
+    // ---------- MEDICACIÓN ----------
+    function renderMedications() {
+        DB.get().then(db => {
+            const el = $('medList');
+            if (!el) return;
+            const meds = db.medications || [];
+            if (!meds.length) {
+                el.innerHTML = '<div class="empty-state"><div class="empty-icon"><i data-lucide="pill"></i></div><div class="empty-title">Sin medicación activa</div><div class="empty-text">Los medicamentos que agregues aparecerán aquí.</div></div>';
+                refreshIcons(); return;
+            }
+            el.innerHTML = meds.map(m =>
+                '<div class="info-item">' +
+                '<div class="ii-icon"><i data-lucide="pill"></i></div>' +
+                '<div class="ii-body"><div class="ii-value">' + esc(m.name) + '</div><div class="ii-label">' + esc(m.dose || '') + (m.inst ? ' · ' + esc(m.inst) : '') + '</div></div>' +
+                '<div class="ii-badge" style="display:flex;gap:6px"><button class="btn btn-link btn-sm" onclick="APP.delMedication(\'' + m.id + '\')">Quitar</button></div>' +
+                '</div>'
+            ).join('');
+            refreshIcons();
+        });
+    }
+
+    async function addMedication() {
+        const name = val('medName'), dose = val('medDose'), inst = val('medInst');
+        if (!name) { toast('Indica el nombre del medicamento.', 'error'); return; }
+        const db = await DB.get();
+        if (!db.medications) db.medications = [];
+        db.medications.push({ id: DB.genId(), name, dose, inst });
+        await DB.save(db);
+        clearForm(['medName', 'medDose', 'medInst']);
+        renderMedications();
+        toast('Medicamento añadido.');
+    }
+
+    async function delMedication(id) {
+        const db = await DB.get();
+        db.medications = (db.medications || []).filter(m => m.id !== id);
+        await DB.save(db);
+        renderMedications();
+        toast('Medicamento eliminado.');
     }
 
     // ============ VACUNAS ============
@@ -327,10 +481,9 @@ const APP = (function () {
             for (let i = 0; i < first; i++) h += '<div class="day empty"></div>';
             for (let d = 1; d <= days; d++) {
                 let cls = d === now.getDate() ? 'day today' : 'day';
-                let title = '';
-                if (vaxDates.includes(d)) title = '💉 Vacuna';
-                if (despDates.includes(d)) title += (title ? ' · ' : '') + '💊 Desp.';
-                h += '<div class="' + cls + '" title="' + title + '">' + d + (vaxDates.includes(d) ? '<span style="position:absolute;top:-2px;right:-2px;font-size:0.5rem">💉</span>' : '') + (despDates.includes(d) ? '<span style="position:absolute;bottom:-2px;left:-2px;font-size:0.5rem">💊</span>' : '') + '</div>';
+                const hasVax = vaxDates.includes(d), hasDesp = despDates.includes(d);
+                const dots = (hasVax ? '<span style="background:var(--teal-bright)"></span>' : '') + (hasDesp ? '<span style="background:var(--warning)"></span>' : '');
+                h += '<div class="' + cls + '" title="' + (hasVax ? 'Vacuna' : '') + (hasVax && hasDesp ? ' · ' : '') + (hasDesp ? 'Desparasitación' : '') + '">' + d + (dots ? '<span class="ev-dot">' + dots + '</span>' : '') + '</div>';
             }
             h += '</div></div>';
             $('calendarWidget').innerHTML = h;
@@ -341,12 +494,13 @@ const APP = (function () {
         const db = await DB.get();
         const el = $('vaxBody');
         renderCalendar();
-        if (!(db.vaccines || []).length) { el.innerHTML = '<tr><td colspan="6" class="empty">Aún no hay vacunas registradas.</td></tr>'; renderVaccineCard(); return; }
+        if (!(db.vaccines || []).length) { el.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon"><i data-lucide="syringe"></i></div><div class="empty-title">Sin vacunas registradas</div></div></td></tr>'; refreshIcons(); renderVaccineCard(); return; }
         el.innerHTML = db.vaccines.map(vx => {
             const past = vx.next && new Date(vx.next) < new Date();
-            const st = past ? '<span class="status status-danger">⚠ Vencido</span>' : (vx.next ? '<span class="status status-ok">✓ Al día</span>' : '<span class="status status-warn">Sin ref.</span>');
+            const st = past ? '<span class="status status-danger"><i data-lucide="alert-triangle"></i> Vencido</span>' : (vx.next ? '<span class="status status-ok"><i data-lucide="check-circle-2"></i> Al día</span>' : '<span class="status status-pend"><i data-lucide="clock"></i> Sin ref.</span>');
             return '<tr><td><input type="checkbox" class="checkbox" checked></td><td><strong>' + esc(vx.type) + '</strong></td><td>' + fmtDate(vx.date) + '</td><td>' + (vx.next ? fmtDate(vx.next) : '—') + '</td><td>' + st + '</td><td><button class="btn btn-danger btn-sm" onclick="APP.delVaccine(\'' + vx.id + '\')">✕</button></td></tr>';
         }).join('');
+        refreshIcons();
         renderVaccineCard(db);
     }
 
@@ -402,16 +556,14 @@ const APP = (function () {
 
     async function renderAllDeworming() {
         const db = await DB.get();
-        const el = $('despBody'); const recent = $('despRecent');
-        if (!(db.deworming || []).length) { el.innerHTML = '<tr><td colspan="6" class="empty">Aún no hay registros.</td></tr>'; recent.innerHTML = '<p class="empty">Sin registros.</p>'; return; }
+        const el = $('despBody');
+        if (!el) return;
+        if (!(db.deworming || []).length) { el.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon"><i data-lucide="droplet"></i></div><div class="empty-title">Sin registros de desparasitación</div></div></td></tr>'; refreshIcons(); return; }
         el.innerHTML = db.deworming.map(dw => {
-            const past = dw.next && new Date(dw.next) < new Date();
-            const st = past ? '<span class="status status-danger">⚠ Vencido</span>' : (dw.next ? '<span class="status status-ok">✓ Al día</span>' : '<span class="status status-warn">Sin fecha</span>');
-            return '<tr><td><input type="checkbox" class="checkbox" checked></td><td>' + fmtDate(dw.date) + '</td><td><strong>' + esc(dw.product || dw.type) + '</strong></td><td>' + esc(dw.dose || '—') + '</td><td>' + (dw.next ? fmtDate(dw.next) : '—') + '</td><td><button class="btn btn-danger btn-sm" onclick="APP.delDeworming(\'' + dw.id + '\')">✕</button></td></tr>';
+            const icon = dw.type === 'Externa' ? 'droplet' : (dw.type === 'Ambas' ? 'shield' : 'syringe');
+            return '<tr><td><div style="display:flex;align-items:center;gap:8px"><i data-lucide="' + icon + '" style="width:16px;height:16px;color:var(--teal)"></i> ' + esc(dw.type) + '</div></td><td>' + fmtDate(dw.date) + '</td><td><strong>' + esc(dw.product || '—') + '</strong></td><td>' + esc(dw.dose || '—') + '</td><td>' + (dw.next ? fmtDate(dw.next) : '—') + '</td><td><button class="btn btn-danger btn-sm" onclick="APP.delDeworming(\'' + dw.id + '\')">✕</button></td></tr>';
         }).join('');
-        recent.innerHTML = db.deworming.slice(-3).reverse().map(dw =>
-            '<div class="record"><div class="record-content"><strong>' + esc(dw.type) + '</strong><small>' + fmtDate(dw.date) + ' · ' + esc(dw.product || '') + '</small></div></div>'
-        ).join('');
+        refreshIcons();
     }
 
     async function delDeworming(id) {
@@ -425,10 +577,11 @@ const APP = (function () {
 
     // ============ ALIMENTACION ============
     async function saveFood() {
+        const restrictions = collectRestrictions();
         const data = {
             type: val('foodType'), brand: val('foodBrand'), amount: val('foodAmount'),
             cost: val('foodCost'), notes: val('foodNotes'), supplements: val('foodSupplements'),
-            treats: val('foodTreats'), restrictions: val('foodRestrictions'),
+            treats: val('foodTreats'), restrictions,
             time1: val('foodTime1'), time2: val('foodTime2'), time3: val('foodTime3'), times: val('foodTimes')
         };
         const errors = VALIDATORS.validateFood(data);
@@ -438,7 +591,16 @@ const APP = (function () {
         db.food = data;
         await DB.save(db);
         renderMealSchedule();
+        renderDietStats();
+        renderHome();
         toast('Alimentación guardada.');
+    }
+
+    function collectRestrictions() {
+        const labels = [];
+        const rows = [['drNoPoll', 'Sin pollo'], ['drNoLact', 'Sin lactosa'], ['drNoGranos', 'Sin granos'], ['drHighProt', 'Alta en proteínas']];
+        rows.forEach(([id, label]) => { const el = $(id); if (el && el.checked) labels.push(label); });
+        return labels.join(', ');
     }
 
     function loadFoodForm() {
@@ -461,6 +623,16 @@ const APP = (function () {
         const listed = weights.slice(-12);
         const cur = (db.profile && db.profile.weight) ? parseFloat(db.profile.weight) : (listed.length ? parseFloat(listed[listed.length-1].w) : null);
         if ($('chartWeight')) $('chartWeight').textContent = cur ? cur + ' kg' : '—';
+        // Tendencia
+        const trend = $('chartTrend');
+        if (trend) {
+            if (listed.length >= 2) {
+                const first = parseFloat(listed[0].w), last = parseFloat(listed[listed.length-1].w);
+                if (last > first) { trend.textContent = 'Subiendo'; trend.className = 'status status-warn'; }
+                else if (last < first) { trend.textContent = 'Bajando'; trend.className = 'status status-danger'; }
+                else { trend.textContent = 'Estable'; trend.className = 'status status-ok'; }
+            } else { trend.textContent = 'Estable'; trend.className = 'status status-ok'; }
+        }
         if (_weightChart) { _weightChart.destroy(); _weightChart = null; }
         if (!weights.length) { return; }
         const labels = listed.map(w => { const d = new Date(w.d + 'T12:00:00'); return d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short' }); });
@@ -471,15 +643,15 @@ const APP = (function () {
                 labels,
                 datasets: [{
                     label: 'Peso (kg)', data,
-                    borderColor: '#F59E0B', backgroundColor: 'rgba(245,158,11,0.18)',
+                    borderColor: '#12A594', backgroundColor: 'rgba(18,165,148,0.18)',
                     fill: true, tension: 0.35,
-                    pointBackgroundColor: '#F59E0B', pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 6
+                    pointBackgroundColor: '#12A594', pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 6
                 }]
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false },
-                    tooltip: { backgroundColor: '#1F2937', titleColor: '#FDE68A', bodyColor: '#fff', cornerRadius: 8, padding: 10 } },
+                    tooltip: { backgroundColor: '#1B2A4A', titleColor: '#E6F7F5', bodyColor: '#fff', cornerRadius: 8, padding: 10 } },
                 scales: {
                     y: { beginAtZero: false, grid: { color: '#F3F4F6' }, ticks: { color: '#9CA3AF' } },
                     x: { grid: { display: false }, ticks: { color: '#9CA3AF' } }
@@ -490,13 +662,10 @@ const APP = (function () {
 
     function renderMealSchedule() {
         DB.get().then(db => {
-            const f = db.food || {}; const el = $('mealSchedule');
-            const meals = [];
-            if (f.time1) meals.push({ time: f.time1, icon: '🌅', desc: 'Desayuno' });
-            if (f.time2) meals.push({ time: f.time2, icon: '☀️', desc: 'Almuerzo' });
-            if (f.time3) meals.push({ time: f.time3, icon: '🌙', desc: 'Cena' });
-            if (!meals.length) { el.innerHTML = '<p class="empty" style="margin-top:0.5rem">Configura horarios arriba.</p>'; return; }
-            el.innerHTML = '<div style="margin-top:1rem">' + meals.map(m => '<div class="meal-row"><span class="meal-time">' + m.time + '</span><span class="meal-icon">' + m.icon + '</span><span class="meal-desc">' + m.desc + '</span></div>').join('') + '</div>';
+            const f = db.food || {};
+            [['meal1time', f.time1], ['meal2time', f.time2], ['meal3time', f.time3]].forEach(([id, t]) => {
+                const el = $(id); if (el) el.textContent = t || '--:--';
+            });
         });
     }
 
@@ -557,12 +726,22 @@ const APP = (function () {
 
         items.sort((a, b) => String(b.date).localeCompare(a.date));
 
-        if (!items.length) { el.innerHTML = '<tr><td colspan="5" class="empty">Sin eventos.</td></tr>'; }
+        if (!items.length) { el.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="empty-icon"><i data-lucide="clipboard-list"></i></div><div class="empty-title">Sin eventos</div></div></td></tr>'; refreshIcons(); }
         else {
             el.innerHTML = items.map(i => {
-                const sc = i.status === 'Completado' ? 'status-ok' : i.status === 'Urgencia' ? 'status-danger' : i.status === 'Cambio' ? 'status-info' : 'status-warn';
-                return '<tr><td>' + fmtDate(i.date) + '</td><td>' + i.cat + '</td><td><strong>' + esc(i.desc) + '</strong></td><td><span class="status ' + sc + '">' + i.status + '</span></td><td><button class="btn btn-danger btn-sm" onclick="APP.delHistoryItem(\'' + i.type + '\',\'' + i.id + '\')">✕</button></td></tr>';
+                const completed = i.status === 'Completado';
+                const urgent = i.status === 'Urgencia';
+                const ongoing = i.status === 'Cambio' || i.status === 'Nota';
+                const badge = urgent ? '<span class="status status-danger"><i data-lucide="alert-triangle"></i> Urgencia</span>'
+                    : ongoing ? '<span class="status status-pend"><i data-lucide="clock"></i> ' + i.status + '</span>'
+                    : '<span class="status status-ok"><i data-lucide="check-circle-2"></i> Completado</span>';
+                const action = i.type === 'ctrl' ? 'Ver notas'
+                    : i.type === 'fc' ? 'Ver plan'
+                    : (i.type === 'note' ? 'Ver nota' : 'Ver registro');
+                return '<tr><td>' + fmtDate(i.date) + '</td><td>' + i.cat + '</td><td><strong>' + esc(i.desc) + '</strong></td><td>' + badge + '</td>' +
+                    '<td><button class="btn btn-link btn-sm" onclick="APP.delHistoryItem(\'' + i.type + '\',\'' + i.id + '\')" title="Eliminar">' + action + '</button></td></tr>';
             }).join('');
+            refreshIcons();
         }
 
         const sum = $('historySummary');
@@ -608,7 +787,7 @@ const APP = (function () {
         if (!confirm('¿Definitivamente?')) return;
         if (DB.isSupabase()) {
             // En modo Supabase borrar tablas
-            await DB.save({ profile: {}, vaccines: [], deworming: [], controls: [], notes: [], food: {}, foodChanges: [], weights: [] });
+            await DB.save({ profile: {}, vaccines: [], deworming: [], controls: [], notes: [], food: {}, foodChanges: [], weights: [], medications: [] });
             toast('Datos borrados de Supabase.');
         } else {
             localStorage.removeItem(DB.localStorageKey);
@@ -628,7 +807,9 @@ const APP = (function () {
     return {
         init, saveProfile, saveVaccine, delVaccine, saveDeworming, delDeworming,
         saveFood, saveFoodChange, delFoodChange, saveNote, delHistoryItem,
-        renderApplyFilters, exportData, clearAllData
+        renderApplyFilters, exportData, clearAllData,
+        toggleProfileEdit, toggleDietEdit, newVisit, saveControl, delControl,
+        addMedication, delMedication, renderHome, renderVisits, renderMedications
     };
 })();
 

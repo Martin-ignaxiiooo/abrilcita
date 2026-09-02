@@ -4,342 +4,465 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Abrilcita - Control de Salud Gatuno</title>
-    <meta name="description" content="Abrilcita: control de salud gatuno — vacunas, desparasitación, alimentación e historial.">
-    <meta name="theme-color" content="#F59E0B">
+    <meta name="description" content="Abrilcita: control de salud gatuno — dashboard, vacunas, desparasitación, alimentación, controles e historial.">
+    <meta name="theme-color" content="#1B2A4A">
 
-    <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
 
-    <!-- Google Fonts: Nunito -->
+    <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <!-- Estilos -->
     <link rel="stylesheet" href="css/styles.css">
 
-    <!-- Lucide icons (iconos SVG) -->
+    <!-- Lucide icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- Chart.js (gráfico de peso) -->
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-    <!-- Supabase SDK (necesario solo si activas el modo Supabase en config.js) -->
+    <!-- Supabase SDK (solo si activas el modo Supabase en config.js) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-    <!-- ============ HEADER + NAV ============ -->
-    <div class="top-bar">
-        <div class="logo-area">
-            <img src="assets/logo.svg" alt="Logo Abrilcita" class="logo-img">
+    <!-- ============ HEADER ============ -->
+    <header class="topbar">
+        <div class="brand">
+            <img src="assets/logo.svg" alt="Logo" class="brand-logo">
             <div>
-                <h1>Abrilcita</h1>
-                <span class="logo-sub">Control de Salud Gatuno</span>
+                <div class="brand-name" id="brandName">Abrilcita</div>
+                <div class="brand-sub">Control de Salud Gatuno</div>
             </div>
         </div>
-        <div class="nav-bar" id="mainNav">
-            <button class="active" data-page="perfil"><i data-lucide="user"></i> Perfil</button>
+        <nav class="navtabs" id="mainNav">
+            <button class="active" data-page="inicio"><span class="tab-dot"></span> Inicio</button>
             <button data-page="vacunas"><i data-lucide="syringe"></i> Vacunas</button>
-            <button data-page="desparasitacion"><i data-lucide="pill"></i> Desparasitación</button>
+            <button data-page="desparasitacion"><i data-lucide="droplet"></i> Desparasitación</button>
             <button data-page="alimentacion"><i data-lucide="utensils"></i> Alimentación</button>
-            <button data-page="historial"><i data-lucide="calendar-clock"></i> Historial</button>
-        </div>
-        <div class="clock-wrap" id="clock" title="Hora actual">--:--</div>
-    </div>
+            <button data-page="controles"><i data-lucide="stethoscope"></i> Controles</button>
+            <button data-page="historial"><i data-lucide="clipboard-list"></i> Historial</button>
+        </nav>
+        <div class="clock-pill" id="clock"><i data-lucide="clock"></i> --:--</div>
+    </header>
 
-    <!-- ============ PERFIL ============ -->
-    <div id="perfil" class="page active">
-        <div class="section-heading">
-            <h2 class="section-title">Perfil de Abrilcita</h2>
-            <p class="section-sub">Resumen del estado de salud de tu gatita</p>
-        </div>
-
-        <!-- KPIs (Fase 4) -->
-        <div class="kpi-grid" id="kpiGrid">
-            <div class="kpi-card"><div class="kpi-icon kpi-brand"><i data-lucide="syringe"></i></div><div><div class="kpi-label">Próxima vacuna</div><div class="kpi-value" id="kpiNextVax">—</div></div></div>
-            <div class="kpi-card"><div class="kpi-icon kpi-warm"><i data-lucide="pill"></i></div><div><div class="kpi-label">Próx. desparasitación</div><div class="kpi-value" id="kpiNextDesp">—</div></div></div>
-            <div class="kpi-card"><div class="kpi-icon kpi-success"><i data-lucide="scale"></i></div><div><div class="kpi-label">Peso actual</div><div class="kpi-value" id="kpiWeight">—</div></div></div>
-            <div class="kpi-card"><div class="kpi-icon kpi-info"><i data-lucide="activity"></i></div><div><div class="kpi-label">Total registros</div><div class="kpi-value" id="kpiTotal">0</div></div></div>
+    <!-- ============ INICIO / HOME ============ -->
+    <div id="inicio" class="page active">
+        <div class="page-head">
+            <div>
+                <h1>Panel de Inicio</h1>
+                <div class="page-sub">Resumen del estado de salud de tu gatita</div>
+            </div>
         </div>
 
-        <div class="dashboard">
+        <div class="grid cols-3">
+            <!-- Pet Overview -->
             <div class="card">
-                <div class="profile-top">
-                    <!-- Foto -->
-                    <div>
-                        <div class="cat-photo">
-                            <div id="catAvatar">🐱</div>
-                            <input type="file" id="catPhoto" accept="image/*" title="Cambiar foto">
-                        </div>
-                        <p style="text-align:center;font-size:0.75rem;color:var(--gray-400);margin-top:var(--sp-2)">Haz clic para cambiar foto</p>
-                    </div>
-                    <!-- Datos -->
-                    <div>
-                        <div class="cat-name" id="displayName">Sin nombre</div>
-                        <div class="cat-meta" id="displayMeta">Edad: — · Peso: — kg</div>
-                        <div class="health-badge"><i data-lucide="shield-check"></i> Estado: <span id="healthStatus">Sin datos</span></div>
+                <div class="card-head">
+                    <span class="card-title">Vista general</span>
+                </div>
+                <div class="pet-photo">
+                    <div class="pet-emoji" id="catAvatar">🐱</div>
+                    <input type="file" id="catPhoto" accept="image/*">
+                </div>
+                <div class="pet-name-row">
+                    <h3 id="homeName">Sin nombre</h3>
+                    <button class="btn-link btn-sm" onclick="APP.toggleProfileEdit()"><i data-lucide="pencil"></i> Editar</button>
+                </div>
+                <div class="pet-stats">
+                    <div class="pet-stat"><div class="ps-label">Edad</div><div class="ps-value" id="homeAge">—</div></div>
+                    <div class="pet-stat"><div class="ps-label">Peso</div><div class="ps-value" id="homeWeight">—</div></div>
+                </div>
+            </div>
 
-                        <div class="form-row">
-                            <div class="form-group"><label for="pName">Nombre *</label><div class="input-wrap"><i data-lucide="cat"></i><input type="text" id="pName" placeholder="Nombre de la gatita"></div></div>
-                            <div class="form-group"><label for="pBirth">Fecha de nacimiento</label><div class="input-wrap"><i data-lucide="calendar"></i><input type="date" id="pBirth"></div></div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group"><label for="pBreed">Raza</label><div class="input-wrap"><i data-lucide="paw-print"></i><input type="text" id="pBreed" placeholder="Criolla, Siamés..."></div></div>
-                            <div class="form-group"><label for="pWeight">Peso (kg) *</label><div class="input-wrap"><i data-lucide="scale"></i><input type="number" step="0.1" id="pWeight" placeholder="4.2"></div></div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group"><label for="pSex">Sexo</label><select id="pSex"><option value="">Seleccionar</option><option>Hembra</option><option>Macho</option></select></div>
-                            <div class="form-group"><label for="pColor">Color</label><div class="input-wrap"><i data-lucide="palette"></i><input type="text" id="pColor" placeholder="Naranja, Negro..."></div></div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group"><label for="pVet">Veterinaria</label><div class="input-wrap"><i data-lucide="building-2"></i><input type="text" id="pVet" placeholder="Clínica"></div></div>
-                            <div class="form-group"><label for="pVetPhone">Teléfono vet</label><div class="input-wrap"><i data-lucide="phone"></i><input type="tel" id="pVetPhone" placeholder="+56 9 XXXX XXXX"></div></div>
-                        </div>
-                        <div class="form-group"><label for="pRut">RUT / Identificación</label><div class="input-wrap"><i data-lucide="id-card"></i><input type="text" id="pRut" placeholder="12.345.678-K"></div></div>
-                        <button class="btn btn-primary" onclick="APP.saveProfile()"><i data-lucide="save"></i> Guardar Perfil</button>
-                        <div id="profileAlert"></div>
+            <!-- Health Status -->
+            <div class="card">
+                <div class="card-head">
+                    <span class="card-title"><span class="dot"></span>Estado de salud</span>
+                </div>
+                <div class="info-list">
+                    <div class="info-item">
+                        <div class="ii-icon"><i data-lucide="activity"></i></div>
+                        <div class="ii-body"><div class="ii-label">Salud general</div><div class="ii-value">Estado</div></div>
+                        <div class="ii-badge"><span class="status status-teal" id="homeHealth">Sin datos</span></div>
                     </div>
-                    <!-- Actividad -->
-                    <div>
-                        <div class="card-title"><span class="dot"></span> Actividad Reciente</div>
-                        <ul class="activity-list" id="recentActivity">
-                            <li><div class="act-icon green">📋</div><div><small style="color:var(--gray-400)">Sin actividad registrada</small></div></li>
-                        </ul>
+                    <div class="info-item">
+                        <div class="ii-icon"><i data-lucide="syringe"></i></div>
+                        <div class="ii-body"><div class="ii-label">Vacunas</div><div class="ii-value">Estado de inmunización</div></div>
+                        <div class="ii-badge"><span class="status status-pend" id="homeVaxStatus">—</span></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="ii-icon"><i data-lucide="droplet"></i></div>
+                        <div class="ii-body"><div class="ii-label">Desparasitación</div><div class="ii-value">Estado antiparasitario</div></div>
+                        <div class="ii-badge"><span class="status status-pend" id="homeDespStatus">—</span></div>
                     </div>
                 </div>
             </div>
+
+            <!-- Upcoming Alerts -->
+            <div class="card">
+                <div class="card-head">
+                    <span class="card-title"><span class="dot"></span>Próximas alertas</span>
+                </div>
+                <div class="alert-list" id="homeAlerts">
+                    <div class="empty-state">
+                        <div class="empty-icon"><i data-lucide="bell"></i></div>
+                        <div class="empty-title">Sin alertas</div>
+                        <div class="empty-text">Los próximos vencimientos aparecerán aquí.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Editar perfil (colapsable) -->
+        <div class="card" id="profileEditCard" style="display:none; margin-top:var(--sp-5)">
+            <div class="card-head">
+                <span class="card-title"><span class="dot"></span>Editar perfil</span>
+                <button class="btn-ghost btn-sm" onclick="APP.toggleProfileEdit()"><i data-lucide="x"></i> Cerrar</button>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label for="pName">Nombre *</label><div class="input-wrap"><i data-lucide="cat"></i><input type="text" id="pName" placeholder="Nombre de la gatita"></div></div>
+                <div class="form-group"><label for="pBirth">Fecha de nacimiento</label><div class="input-wrap"><i data-lucide="calendar"></i><input type="date" id="pBirth"></div></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label for="pBreed">Raza</label><div class="input-wrap"><i data-lucide="paw-print"></i><input type="text" id="pBreed" placeholder="Criolla, Siamés..."></div></div>
+                <div class="form-group"><label for="pWeight">Peso (kg) *</label><div class="input-wrap"><i data-lucide="scale"></i><input type="number" step="0.1" id="pWeight" placeholder="4.2"></div></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label for="pSex">Sexo</label><div class="input-wrap"><i data-lucide="gender-intersex"></i><select id="pSex"><option value="">Seleccionar</option><option>Hembra</option><option>Macho</option></select></div></div>
+                <div class="form-group"><label for="pColor">Color</label><div class="input-wrap"><i data-lucide="palette"></i><input type="text" id="pColor" placeholder="Naranja, Negro..."></div></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label for="pVet">Veterinaria</label><div class="input-wrap"><i data-lucide="building-2"></i><input type="text" id="pVet" placeholder="Clínica"></div></div>
+                <div class="form-group"><label for="pVetPhone">Teléfono vet</label><div class="input-wrap"><i data-lucide="phone"></i><input type="tel" id="pVetPhone" placeholder="+56 9 XXXX XXXX"></div></div>
+            </div>
+            <div class="form-group"><label for="pRut">RUT / Identificación</label><div class="input-wrap"><i data-lucide="id-card"></i><input type="text" id="pRut" placeholder="12.345.678-K"></div></div>
+            <button class="btn btn-primary" onclick="APP.saveProfile()"><i data-lucide="save"></i> Guardar Perfil</button>
+            <div id="profileAlert"></div>
         </div>
     </div>
 
     <!-- ============ VACUNAS ============ -->
     <div id="vacunas" class="page">
-        <div class="section-heading">
-            <h2 class="section-title">Vacunas</h2>
-            <p class="section-sub">Registro de vacunación de Abrilcita</p>
+        <div class="page-head">
+            <div>
+                <h1>Registro de Vacunas</h1>
+                <div class="page-sub">Control de inmunización de Abrilcita</div>
+            </div>
         </div>
-        <div class="dashboard dash-left-right">
+        <div class="grid cols-70-30">
             <div class="card">
-                <div class="card-title"><span class="dot"></span> Registro de Vacunas</div>
+                <div class="card-head">
+                    <span class="card-title"><span class="dot"></span>Historial de vacunas</span>
+                </div>
                 <div class="table-wrap">
                 <table class="data-table">
-                    <thead><tr><th style="width:30px"></th><th>Vacuna</th><th>Fecha</th><th>Refuerzo</th><th>Estado</th><th></th></tr></thead>
-                    <tbody id="vaxBody"><tr><td colspan="6"><div class="empty-state"><span class="empty-emoji">💉</span><div class="empty-title">Sin vacunas registradas</div><p class="empty-text">Agrega la primera vacuna para llevar el control.</p></div></td></tr></tbody>
+                    <thead><tr><th style="width:32px"></th><th>Vacuna</th><th>Fecha</th><th>Refuerzo</th><th>Estado</th><th></th></tr></thead>
+                    <tbody id="vaxBody"><tr><td colspan="6"><div class="empty-state"><div class="empty-icon"><i data-lucide="syringe"></i></div><div class="empty-title">Sin vacunas registradas</div><div class="empty-text">Agrega la primera vacuna para llevar el control.</div></div></td></tr></tbody>
                 </table>
-                </div>
-
-                <div style="margin-top:var(--sp-5); padding-top:var(--sp-5); border-top:1px solid var(--gray-200)">
-                    <h3 style="font-size:var(--fs-lg);font-weight:800;color:var(--gray-900);margin-bottom:var(--sp-4)">Nueva Vacuna</h3>
-                    <div class="form-row">
-                        <div class="form-group"><label for="vaxType">Tipo de vacuna *</label><select id="vaxType"><option value="">Seleccionar</option><option>Trífelis Felina</option><option>Rabia</option><option>Leucemia Felina (FeLV)</option><option>Bordetella</option><option>Otra</option></select></div>
-                        <div class="form-group"><label for="vaxDate">Fecha *</label><div class="input-wrap"><i data-lucide="calendar"></i><input type="date" id="vaxDate"></div></div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group"><label for="vaxLot">Lote</label><div class="input-wrap"><i data-lucide="hash"></i><input type="text" id="vaxLot" placeholder="N° lote"></div></div>
-                        <div class="form-group"><label for="vaxLab">Laboratorio</label><div class="input-wrap"><i data-lucide="flask-conical"></i><input type="text" id="vaxLab" placeholder="Zoetis, MSD..."></div></div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group"><label for="vaxVet">Veterinaria</label><div class="input-wrap"><i data-lucide="building-2"></i><input type="text" id="vaxVet" placeholder="Clínica"></div></div>
-                        <div class="form-group"><label for="vaxNext">Próximo refuerzo</label><div class="input-wrap"><i data-lucide="calendar-clock"></i><input type="date" id="vaxNext"></div></div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group"><label for="vaxCost">Costo (CLP)</label><div class="input-wrap"><i data-lucide="banknote"></i><input type="number" id="vaxCost" placeholder="25000"></div></div>
-                        <div class="form-group"><label for="vaxNotes">Observaciones</label><div class="input-wrap"><i data-lucide="message-square"></i><input type="text" id="vaxNotes" placeholder="Reacciones, etc."></div></div>
-                    </div>
-                    <button class="btn btn-primary" onclick="APP.saveVaccine()"><i data-lucide="plus"></i> Agregar Vacuna</button>
                 </div>
             </div>
             <div>
-                <div class="card" style="margin-bottom:var(--sp-5)">
-                    <div class="card-title"><span class="dot"></span> Calendario</div>
+                <div class="card" style="margin-top:0">
+                    <div class="card-head"><span class="card-title"><span class="dot"></span>Calendario</span></div>
                     <div id="calendarWidget"></div>
                 </div>
                 <div class="card">
-                    <div class="card-title"><span class="dot"></span> Carnet de Vacunas</div>
-                    <div id="vaccineCard"><p class="empty">Sin vacunas registradas.</p></div>
+                    <div class="card-head"><span class="card-title"><span class="dot"></span>Carnet de vacunas</span></div>
+                    <div id="vaccineCard"></div>
                 </div>
             </div>
+        </div>
+        <div class="card">
+            <div class="card-head">
+                <span class="card-title"><span class="dot"></span>Nueva vacuna</span>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label for="vaxType">Tipo de vacuna *</label><select id="vaxType"><option value="">Seleccionar</option><option>Trífelis Felina</option><option>Rabia</option><option>Leucemia Felina (FeLV)</option><option>Bordetella</option><option>Otra</option></select></div>
+                <div class="form-group"><label for="vaxDate">Fecha *</label><div class="input-wrap"><i data-lucide="calendar"></i><input type="date" id="vaxDate"></div></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label for="vaxLot">Lote</label><div class="input-wrap"><i data-lucide="hash"></i><input type="text" id="vaxLot" placeholder="N° lote"></div></div>
+                <div class="form-group"><label for="vaxLab">Laboratorio</label><div class="input-wrap"><i data-lucide="flask-conical"></i><input type="text" id="vaxLab" placeholder="Zoetis, MSD..."></div></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label for="vaxVet">Veterinaria</label><div class="input-wrap"><i data-lucide="building-2"></i><input type="text" id="vaxVet" placeholder="Clínica"></div></div>
+                <div class="form-group"><label for="vaxNext">Próximo refuerzo</label><div class="input-wrap"><i data-lucide="calendar-clock"></i><input type="date" id="vaxNext"></div></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label for="vaxCost">Costo (CLP)</label><div class="input-wrap"><i data-lucide="banknote"></i><input type="number" id="vaxCost" placeholder="25000"></div></div>
+                <div class="form-group"><label for="vaxNotes">Observaciones</label><div class="input-wrap"><i data-lucide="message-square"></i><input type="text" id="vaxNotes" placeholder="Reacciones, etc."></div></div>
+            </div>
+            <button class="btn btn-primary" onclick="APP.saveVaccine()"><i data-lucide="plus"></i> Agregar Vacuna</button>
         </div>
     </div>
 
     <!-- ============ DESPARASITACION ============ -->
     <div id="desparasitacion" class="page">
-        <div class="section-heading">
-            <h2 class="section-title">Desparasitación</h2>
-            <p class="section-sub">Control de parásitos internos y externos</p>
+        <div class="page-head">
+            <div>
+                <h1>Registro Clínico de Desparasitación</h1>
+                <div class="page-sub">Control de parásitos internos y externos</div>
+            </div>
+            <button class="btn btn-primary" onclick="document.getElementById('despNew').scrollIntoView({behavior:'smooth'})"><i data-lucide="plus"></i> Añadir Nuevo Tratamiento</button>
         </div>
-        <div class="dashboard dash-left-right">
+        <div class="grid cols-70-30">
             <div class="card">
-                <div class="card-title"><span class="dot"></span> Registro de Desparasitación</div>
+                <div class="card-head">
+                    <span class="card-title"><span class="dot"></span>Registro de desparasitación</span>
+                </div>
                 <div class="table-wrap">
                 <table class="data-table">
-                    <thead><tr><th style="width:30px"></th><th>Fecha</th><th>Marca / Producto</th><th>Dósis</th><th>Próxima</th><th></th></tr></thead>
-                    <tbody id="despBody"><tr><td colspan="6"><div class="empty-state"><span class="empty-emoji">💊</span><div class="empty-title">Sin registros de desparasitación</div><p class="empty-text">Registra la primera desparasitación de Abrilcita.</p></div></td></tr></tbody>
+                    <thead><tr><th>Tipo</th><th>Fecha</th><th>Producto</th><th>Dósis</th><th>Próxima</th><th></th></tr></thead>
+                    <tbody id="despBody"><tr><td colspan="6"><div class="empty-state"><div class="empty-icon"><i data-lucide="droplet"></i></div><div class="empty-title">Sin registros de desparasitación</div><div class="empty-text">Registra la primera desparasitación de Abrilcita.</div></div></td></tr></tbody>
                 </table>
                 </div>
-                <div style="margin-top:var(--sp-5); padding-top:var(--sp-5); border-top:1px solid var(--gray-200)">
-                    <h3 style="font-size:var(--fs-lg);font-weight:800;color:var(--gray-900);margin-bottom:var(--sp-4)">Nuevo Registro</h3>
-                    <div class="form-row">
-                        <div class="form-group"><label for="despType">Tipo *</label><select id="despType"><option value="">Seleccionar</option><option>Interna</option><option>Externa</option><option>Ambas</option></select></div>
-                        <div class="form-group"><label for="despDate">Fecha *</label><div class="input-wrap"><i data-lucide="calendar"></i><input type="date" id="despDate"></div></div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group"><label for="despProduct">Marca / Producto</label><div class="input-wrap"><i data-lucide="package"></i><input type="text" id="despProduct" placeholder="Drontal, Frontline..."></div></div>
-                        <div class="form-group"><label for="despDose">Dósis / Vía</label><div class="input-wrap"><i data-lucide="droplets"></i><input type="text" id="despDose" placeholder="Comprimido oral..."></div></div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group"><label for="despWeight">Peso (kg)</label><div class="input-wrap"><i data-lucide="scale"></i><input type="number" step="0.1" id="despWeight" placeholder="4.2"></div></div>
-                        <div class="form-group"><label for="despNext">Próxima aplicación</label><div class="input-wrap"><i data-lucide="calendar-clock"></i><input type="date" id="despNext"></div></div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group"><label for="despVet">Veterinaria</label><div class="input-wrap"><i data-lucide="building-2"></i><input type="text" id="despVet" placeholder="Clínica"></div></div>
-                        <div class="form-group"><label for="despCost">Costo (CLP)</label><div class="input-wrap"><i data-lucide="banknote"></i><input type="number" id="despCost" placeholder="15000"></div></div>
-                    </div>
-                    <div class="form-group"><label for="despNotes">Observaciones</label><textarea id="despNotes" rows="2" placeholder="Reacciones, etc."></textarea></div>
-                    <button class="btn btn-primary" onclick="APP.saveDeworming()"><i data-lucide="plus"></i> Agregar Registro</button>
+            </div>
+            <div class="card" style="margin-top:0">
+                <div class="card-head"><span class="card-title"><span class="dot"></span>Protocolo recomendado</span></div>
+                <div class="info-list" id="despSch">
+                    <div class="info-item"><div class="ii-icon"><i data-lucide="shield"></i></div><div class="ii-body"><div class="ii-value">Toxoplasmosis</div><div class="ii-label">Cada 3 meses</div></div></div>
+                    <div class="info-item"><div class="ii-icon"><i data-lucide="shield-check"></i></div><div class="ii-body"><div class="ii-value">Echinococcus</div><div class="ii-label">Zonas rurales de Chile</div></div></div>
+                    <div class="info-item"><div class="ii-icon"><i data-lucide="bug"></i></div><div class="ii-body"><div class="ii-value">Pulgas</div><div class="ii-label">Tratamiento mensual</div></div></div>
+                    <div class="info-item"><div class="ii-icon"><i data-lucide="bug"></i></div><div class="ii-body"><div class="ii-value">Garrapatas</div><div class="ii-label">Común en el sur</div></div></div>
                 </div>
             </div>
-            <div>
-                <div class="card" style="margin-bottom:var(--sp-5)">
-                    <div class="card-title"><span class="dot"></span> Protocolo de Seguimiento</div>
-                    <div class="sidebar-info">
-                        <ul class="activity-list" style="list-style:none">
-                            <li><div class="act-icon orange" style="min-width:38px"><i data-lucide="bug"></i></div><div><strong>Toxoplasmosis</strong><br><small class="act-date">Cada 3 meses</small></div></li>
-                            <li><div class="act-icon green"><i data-lucide="shield-check"></i></div><div><strong>Echinococcus</strong><br><small class="act-date">Zonas rurales Chile</small></div></li>
-                            <li><div class="act-icon blue"><i data-lucide="bug"></i></div><div><strong>Pulgas</strong><br><small class="act-date">Tratamiento mensual</small></div></li>
-                            <li><div class="act-icon orange"><i data-lucide="bug"></i></div><div><strong>Garrapatas</strong><br><small class="act-date">Común en el sur</small></div></li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="card-title"><span class="dot"></span> Últimos Registros</div>
-                    <div id="despRecent"><div class="empty-state"><span class="empty-emoji">💊</span><div class="empty-title">Sin registros</div></div></div>
-                </div>
+        </div>
+        <div class="card" id="despNew">
+            <div class="card-head">
+                <span class="card-title"><span class="dot"></span>Nuevo tratamiento</span>
             </div>
+            <div class="form-row">
+                <div class="form-group"><label for="despType">Tipo *</label><select id="despType"><option value="">Seleccionar</option><option>Interna</option><option>Externa</option><option>Ambas</option></select></div>
+                <div class="form-group"><label for="despDate">Fecha *</label><div class="input-wrap"><i data-lucide="calendar"></i><input type="date" id="despDate"></div></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label for="despProduct">Marca / Producto</label><div class="input-wrap"><i data-lucide="package"></i><input type="text" id="despProduct" placeholder="Drontal, Frontline..."></div></div>
+                <div class="form-group"><label for="despDose">Dósis / Vía</label><div class="input-wrap"><i data-lucide="droplets"></i><input type="text" id="despDose" placeholder="Comprimido oral..."></div></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label for="despWeight">Peso (kg)</label><div class="input-wrap"><i data-lucide="scale"></i><input type="number" step="0.1" id="despWeight" placeholder="4.2"></div></div>
+                <div class="form-group"><label for="despNext">Próxima aplicación</label><div class="input-wrap"><i data-lucide="calendar-clock"></i><input type="date" id="despNext"></div></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label for="despVet">Veterinaria</label><div class="input-wrap"><i data-lucide="building-2"></i><input type="text" id="despVet" placeholder="Clínica"></div></div>
+                <div class="form-group"><label for="despCost">Costo (CLP)</label><div class="input-wrap"><i data-lucide="banknote"></i><input type="number" id="despCost" placeholder="15000"></div></div>
+            </div>
+            <div class="form-group"><label for="despNotes">Observaciones</label><textarea id="despNotes" rows="2" placeholder="Reacciones, etc."></textarea></div>
+            <button class="btn btn-primary" onclick="APP.saveDeworming()"><i data-lucide="plus"></i> Agregar Registro</button>
         </div>
     </div>
 
-    <!-- ============ ALIMENTACION ============ -->
+    <!-- ============ ALIMENTACION (Variante B) ============ -->
     <div id="alimentacion" class="page">
-        <div class="section-heading">
-            <h2 class="section-title">Alimentación</h2>
-            <p class="section-sub">Dieta, horarios y cambios en la alimentación de Abrilcita</p>
-        </div>
-        <div class="dashboard dash-2col">
-            <div class="card">
-                <div class="card-title"><span class="dot"></span> Dieta Actual</div>
-                <div class="form-row">
-                    <div class="form-group"><label for="foodType">Tipo de Comida</label><div class="input-wrap"><i data-lucide="utensils"></i><select id="foodType"><option value="">Seleccionar</option><option>Comida seca (balance)</option><option>Comida húmeda</option><option>Semihúmeda</option><option>Barf / Cruda</option><option>Casera</option><option>Mezcla (seca + húmeda)</option><option>Otra</option></select></div></div>
-                    <div class="form-group"><label for="foodBrand">Marca</label><div class="input-wrap"><i data-lucide="package"></i><input type="text" id="foodBrand" placeholder="Royal Canin, Excellent..."></div></div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group"><label for="foodAmount">Dosis Diaria</label><div class="input-wrap"><i data-lucide="scale"></i><input type="text" id="foodAmount" placeholder="1/2 taza seca + 1/4 lata húmeda"></div></div>
-                    <div class="form-group"><label for="foodCost">Costo Mensual (CLP)</label><div class="input-wrap"><i data-lucide="banknote"></i><input type="number" id="foodCost" placeholder="35000"></div></div>
-                </div>
-                <div class="form-group"><label for="foodNotes">Notas Nutricionales</label><textarea id="foodNotes" rows="2" placeholder="Alta en proteínas, sin granos..."></textarea></div>
-                <div class="form-row">
-                    <div class="form-group"><label for="foodSupplements">Suplementos / Vitaminas</label><div class="input-wrap"><i data-lucide="vitamins"></i><input type="text" id="foodSupplements" placeholder="Aceite de salmón, Taurina..."></div></div>
-                    <div class="form-group"><label for="foodTreats">Treats / Premios</label><div class="input-wrap"><i data-lucide="candy"></i><input type="text" id="foodTreats" placeholder="Dreamies, etc."></div></div>
-                </div>
-                <div class="form-group"><label for="foodRestrictions">Restricciones / Alergias</label><input type="text" id="foodRestrictions" placeholder="No tolera pollo, sin lactosa...">
-                    <div class="field-error" style="display:none"></div></div>
-                <button class="btn btn-primary" onclick="APP.saveFood()"><i data-lucide="save"></i> Guardar Dieta</button>
-            </div>
+        <div class="page-head">
             <div>
-                <div class="card" style="margin-bottom:var(--sp-5)">
-                    <div class="card-title"><span class="dot"></span> Progreso de Peso</div>
-                    <div class="chart-box"><canvas id="weightChart"></canvas></div>
-                    <div class="chart-summary">
-                        <span>Peso actual: <strong id="chartWeight">—</strong></span>
-                        <span>Tendencia: <span class="status status-ok">Estable</span></span>
+                <h1>Analíticas Nutricionales y Registro de Alimentación</h1>
+                <div class="page-sub">Dieta, horarios y cambios en la alimentación</div>
+            </div>
+            <button class="btn btn-primary" onclick="APP.addMeal()"><i data-lucide="plus"></i> Añadir Nuevo Registro de Comida</button>
+        </div>
+        <div class="grid cols-40-60">
+            <div>
+                <div class="card" style="margin-top:0">
+                    <div class="card-head">
+                        <span class="card-title"><span class="dot"></span>Análisis nutricional</span>
+                        <button class="btn-ghost btn-sm" onclick="APP.toggleDietEdit()"><i data-lucide="pencil"></i> Editar</button>
+                    </div>
+                    <div class="mini-grid" id="dietStats">
+                        <div class="mini-card"><span class="mc-label">Marca</span><span class="mc-value" id="dietBrand">—</span></div>
+                        <div class="mini-card"><span class="mc-label">Tipo de alimento</span><span class="mc-value" id="dietType">—</span></div>
+                        <div class="mini-card"><span class="mc-label">Porción diaria</span><span class="mc-value" id="dietAmount">—</span></div>
+                        <div class="mini-card"><span class="mc-label">Frecuencia</span><span class="mc-value" id="dietTimes">—</span></div>
+                    </div>
+                    <div style="margin-top:var(--sp-4)">
+                        <div class="card-title" style="font-size:var(--fs-sm);font-weight:600">Requisitos especiales y alergias</div>
+                        <div class="checklist" id="dietRestrictions">
+                            <label class="check-row"><input type="checkbox" id="drNoPoll"> Sin pollo</label>
+                            <label class="check-row"><input type="checkbox" id="drNoLact"> Sin lactosa</label>
+                            <label class="check-row"><input type="checkbox" id="drNoGranos"> Sin granos</label>
+                            <label class="check-row"><input type="checkbox" id="drHighProt"> Alta en proteínas</label>
+                        </div>
                     </div>
                 </div>
                 <div class="card">
-                    <div class="card-title"><span class="dot"></span> Horario de Comidas</div>
-                    <div class="form-row">
-                        <div class="form-group"><label for="foodTime1">Horario 1</label><div class="input-wrap"><i data-lucide="clock"></i><input type="time" id="foodTime1"></div></div>
-                        <div class="form-group"><label for="foodTime2">Horario 2</label><div class="input-wrap"><i data-lucide="clock"></i><input type="time" id="foodTime2"></div></div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group"><label for="foodTime3">Horario 3</label><div class="input-wrap"><i data-lucide="clock"></i><input type="time" id="foodTime3"></div></div>
-                        <div class="form-group"><label for="foodTimes">Frecuencia</label><div class="input-wrap"><i data-lucide="repeat"></i><select id="foodTimes"><option value="">Seleccionar</option><option value="1">1 vez/día</option><option value="2">2 veces/día</option><option value="3">3 veces/día</option><option value="libre">Libre</option></select></div></div>
-                    </div>
-                    <div id="mealSchedule"></div>
+                    <div class="card-head"><span class="card-title"><span class="dot"></span>Historial de cambios</span></div>
+                    <div id="foodHistory"><div class="empty-state"><div class="empty-icon"><i data-lucide="history"></i></div><div class="empty-title">Sin cambios registrados</div></div></div>
+                </div>
+            </div>
+            <div class="card" style="margin-top:0">
+                <div class="card-head"><span class="card-title"><span class="dot"></span>Evolución de peso</span></div>
+                <div class="chart-box"><canvas id="weightChart"></canvas></div>
+                <div class="chart-summary">
+                    <span class="cs-item">Peso actual: <strong id="chartWeight">—</strong></span>
+                    <span class="cs-item">Tendencia: <span class="status status-ok" id="chartTrend">Estable</span></span>
                 </div>
             </div>
         </div>
-        <div class="dashboard dash-2col" style="margin-top:var(--sp-5)">
-            <div class="card">
-                <div class="card-title"><span class="dot"></span> Historial de Cambios</div>
-                <div id="foodHistory"><div class="empty-state"><span class="empty-emoji">🍱</span><div class="empty-title">Sin cambios registrados</div></div></div>
+
+        <!-- Form edición dieta (colapsable) -->
+        <div class="card" id="dietEditCard" style="display:none">
+            <div class="card-head">
+                <span class="card-title"><span class="dot"></span>Editar dieta</span>
+                <button class="btn-ghost btn-sm" onclick="APP.toggleDietEdit()"><i data-lucide="x"></i> Cerrar</button>
             </div>
-            <div class="card">
-                <div class="card-title"><span class="dot"></span> Registrar Cambio</div>
+            <div class="form-row">
+                <div class="form-group"><label for="foodType">Tipo de Comida</label><select id="foodType"><option value="">Seleccionar</option><option>Comida seca (balance)</option><option>Comida húmeda</option><option>Semihúmeda</option><option>Barf / Cruda</option><option>Casera</option><option>Mezcla (seca + húmeda)</option><option>Otra</option></select></div>
+                <div class="form-group"><label for="foodBrand">Marca</label><div class="input-wrap"><i data-lucide="package"></i><input type="text" id="foodBrand" placeholder="Royal Canin, Excellent..."></div></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label for="foodAmount">Dosis Diaria</label><div class="input-wrap"><i data-lucide="scale"></i><input type="text" id="foodAmount" placeholder="1/2 taza seca + 1/4 lata húmeda"></div></div>
+                <div class="form-group"><label for="foodCost">Costo Mensual (CLP)</label><div class="input-wrap"><i data-lucide="banknote"></i><input type="number" id="foodCost" placeholder="35000"></div></div>
+            </div>
+            <div class="form-group"><label for="foodNotes">Notas Nutricionales</label><textarea id="foodNotes" rows="2" placeholder="Alta en proteínas, sin granos..."></textarea></div>
+            <div class="form-row">
+                <div class="form-group"><label for="foodSupplements">Suplementos / Vitaminas</label><div class="input-wrap"><i data-lucide="vitamins"></i><input type="text" id="foodSupplements" placeholder="Aceite de salmón, Taurina..."></div></div>
+                <div class="form-group"><label for="foodTreats">Treats / Premios</label><div class="input-wrap"><i data-lucide="candy"></i><input type="text" id="foodTreats" placeholder="Dreamies, etc."></div></div>
+            </div>
+            <button class="btn btn-primary" onclick="APP.saveFood()"><i data-lucide="save"></i> Guardar Dieta</button>
+        </div>
+
+        <div class="card">
+            <div class="card-head">
+                <span class="card-title"><span class="dot"></span>Horario de comidas</span>
+            </div>
+            <div class="meal-sched" id="mealSchedule">
+                <div class="meal-block"><div class="mb-icon"><i data-lucide="sunrise"></i></div><div><div class="mb-time" id="meal1time">--:--</div><div class="mb-desc">Desayuno</div></div></div>
+                <div class="meal-block"><div class="mb-icon"><i data-lucide="sun"></i></div><div><div class="mb-time" id="meal2time">--:--</div><div class="mb-desc">Almuerzo</div></div></div>
+                <div class="meal-block"><div class="mb-icon"><i data-lucide="moon"></i></div><div><div class="mb-time" id="meal3time">--:--</div><div class="mb-desc">Cena</div></div></div>
+            </div>
+            <div style="margin-top:var(--sp-4); padding-top:var(--sp-4); border-top:1px solid var(--gray-100)">
+                <div class="form-row">
+                    <div class="form-group"><label for="foodTime1">Horario 1</label><div class="input-wrap"><i data-lucide="clock"></i><input type="time" id="foodTime1"></div></div>
+                    <div class="form-group"><label for="foodTime2">Horario 2</label><div class="input-wrap"><i data-lucide="clock"></i><input type="time" id="foodTime2"></div></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label for="foodTime3">Horario 3</label><div class="input-wrap"><i data-lucide="clock"></i><input type="time" id="foodTime3"></div></div>
+                    <div class="form-group"><label for="foodTimes">Frecuencia</label><select id="foodTimes"><option value="">Seleccionar</option><option value="1">1 vez/día</option><option value="2">2 veces/día</option><option value="3">3 veces/día</option><option value="libre">Libre</option></select></div>
+                </div>
+                <button class="btn btn-ghost" onclick="APP.saveFood()"><i data-lucide="save"></i> Guardar Horarios</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-head"><span class="card-title"><span class="dot"></span>Registrar cambio de alimento</span></div>
+            <div class="form-row">
                 <div class="form-group"><label for="foodChangeDate">Fecha *</label><div class="input-wrap"><i data-lucide="calendar"></i><input type="date" id="foodChangeDate"></div></div>
                 <div class="form-group"><label for="foodChangeDesc">¿Qué cambió? *</label><div class="input-wrap"><i data-lucide="shuffle"></i><input type="text" id="foodChangeDesc" placeholder="Cambié de marca..."></div></div>
-                <div class="form-group"><label for="foodChangeReason">Motivo</label><textarea id="foodChangeReason" rows="2" placeholder="Recomendación vet..."></textarea></div>
-                <button class="btn btn-primary" onclick="APP.saveFoodChange()"><i data-lucide="plus"></i> Registrar Cambio</button>
             </div>
+            <div class="form-group"><label for="foodChangeReason">Motivo</label><textarea id="foodChangeReason" rows="2" placeholder="Recomendación vet..."></textarea></div>
+            <button class="btn btn-primary" onclick="APP.saveFoodChange()"><i data-lucide="plus"></i> Registrar Cambio</button>
+        </div>
+    </div>
+
+    <!-- ============ CONTROLES / VISITAS ============ -->
+    <div id="controles" class="page">
+        <div class="page-head">
+            <div>
+                <h1>Registros de Visitas Veterinarias</h1>
+                <div class="page-sub">Historial de controles y medicación activa</div>
+            </div>
+            <button class="btn btn-primary" onclick="APP.newVisit()"><i data-lucide="plus"></i> Registrar Visita</button>
+        </div>
+        <div class="grid cols-60-40">
+            <div class="card" style="margin-top:0">
+                <div class="card-head"><span class="card-title"><span class="dot"></span>Línea de tiempo de visitas</span></div>
+                <div class="timeline" id="visitsTimeline">
+                    <div class="empty-state"><div class="empty-icon"><i data-lucide="stethoscope"></i></div><div class="empty-title">Sin visitas registradas</div><div class="empty-text">Registra el primer control veterinario de Abrilcita.</div></div>
+                </div>
+            </div>
+            <div class="card" style="margin-top:0">
+                <div class="card-head"><span class="card-title"><span class="dot"></span>Medicación activa</span></div>
+                <div id="medList" style="margin-bottom:var(--sp-4)"><div class="empty-state"><div class="empty-icon"><i data-lucide="pill"></i></div><div class="empty-title">Sin medicación</div></div></div>
+                <div style="border-top:1px solid var(--gray-100); padding-top:var(--sp-4)">
+                    <div class="card-title" style="font-size:var(--fs-sm);font-weight:600;margin-bottom:var(--sp-3)">Añadir medicamento</div>
+                    <div class="form-row">
+                        <div class="form-group"><label for="medName">Medicamento</label><div class="input-wrap"><i data-lucide="pill"></i><input type="text" id="medName" placeholder="Amoxicilina"></div></div>
+                        <div class="form-group"><label for="medDose">Dósis</label><div class="input-wrap"><i data-lucide="droplets"></i><input type="text" id="medDose" placeholder="15 mg"></div></div>
+                    </div>
+                    <div class="form-group"><label for="medInst">Instrucciones</label><textarea id="medInst" rows="2" placeholder="Cada 12 horas con comida"></textarea></div>
+                    <button class="btn btn-primary btn-sm" onclick="APP.addMedication()"><i data-lucide="plus"></i> Añadir</button>
+                </div>
+            </div>
+        </div>
+        <!-- Form registrar visita -->
+        <div class="card" id="visitForm" style="display:none">
+            <div class="card-head">
+                <span class="card-title"><span class="dot"></span>Registrar visita</span>
+                <button class="btn-ghost btn-sm" onclick="document.getElementById('visitForm').style.display='none'"><i data-lucide="x"></i> Cerrar</button>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label for="cDate">Fecha *</label><div class="input-wrap"><i data-lucide="calendar"></i><input type="date" id="cDate"></div></div>
+                <div class="form-group"><label for="cType">Tipo *</label><select id="cType"><option value="">Seleccionar</option><option>Control general</option><option>Urgencia</option><option>Seguimiento</option><option>Cirugía</option></select></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label for="cReason">Motivo</label><div class="input-wrap"><i data-lucide="message-square"></i><input type="text" id="cReason" placeholder="Revisión, dolor..."></div></div>
+                <div class="form-group"><label for="cClinic">Clínica</label><div class="input-wrap"><i data-lucide="building-2"></i><input type="text" id="cClinic" placeholder="Clínica veterinaria"></div></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label for="cWeight">Peso (kg)</label><div class="input-wrap"><i data-lucide="scale"></i><input type="number" step="0.1" id="cWeight" placeholder="4.2"></div></div>
+                <div class="form-group"><label for="cCost">Costo (CLP)</label><div class="input-wrap"><i data-lucide="banknote"></i><input type="number" id="cCost" placeholder="25000"></div></div>
+            </div>
+            <div class="form-group"><label for="cResult">Resultado / Notas clínicas</label><textarea id="cResult" rows="3" placeholder="Diagnóstico, tratamiento..."></textarea></div>
+            <button class="btn btn-primary" onclick="APP.saveControl()"><i data-lucide="save"></i> Guardar Visita</button>
         </div>
     </div>
 
     <!-- ============ HISTORIAL ============ -->
     <div id="historial" class="page">
-        <div class="section-heading">
-            <h2 class="section-title">Historial Médico</h2>
-            <p class="section-sub">Registro consolidado de todos los eventos de Abrilcita</p>
+        <div class="page-head">
+            <div>
+                <h1>Historial Médico Consolidado</h1>
+                <div class="page-sub">Registro de todos los eventos de Abrilcita</div>
+            </div>
         </div>
-        <div class="dashboard dash-right-left">
-            <div class="filters-panel">
+        <div class="grid cols-30-70">
+            <div class="filter-side">
                 <h4><i data-lucide="filter"></i> Filtros</h4>
                 <label class="filter-check"><input type="checkbox" id="fVax" checked> 💉 Vacunas</label>
                 <label class="filter-check"><input type="checkbox" id="fFood" checked> 🍽️ Alimentación</label>
                 <label class="filter-check"><input type="checkbox" id="fVisits" checked> 🏥 Controles</label>
                 <label class="filter-check"><input type="checkbox" id="fDesp" checked> 💊 Desparasitación</label>
                 <label class="filter-check"><input type="checkbox" id="fNotes" checked> 📝 Notas</label>
-                <button class="filter-btn" onclick="renderApplyFilters()"><i data-lucide="check-check"></i> Aplicar Filtros</button>
+                <button class="filter-cta" onclick="APP.renderApplyFilters()"><i data-lucide="check-check"></i> Aplicar Filtros</button>
 
-                <div style="margin-top:var(--sp-5)">
+                <div class="fs-block">
                     <h4><i data-lucide="bar-chart-3"></i> Resumen</h4>
-                    <div id="historySummary" style="margin-top:0.5rem"></div>
+                    <div id="historySummary" style="margin-top:var(--sp-3)"></div>
                 </div>
 
-                <div style="margin-top:var(--sp-5)">
-                    <h4><i data-lucide="pen-line"></i> Nota Rápida</h4>
-                    <div class="form-group"><input type="date" id="noteDate" style="background:white;color:#333"></div>
-                    <div class="form-group"><input type="text" id="noteTitle" placeholder="Título" style="background:white;color:#333"></div>
-                    <div class="form-group"><textarea id="noteDesc" rows="2" placeholder="Detalle..." style="background:white;color:#333"></textarea></div>
-                    <button class="filter-btn" onclick="APP.saveNote()"><i data-lucide="save"></i> Guardar Nota</button>
+                <div class="fs-block">
+                    <h4><i data-lucide="pen-line"></i> Nota rápida</h4>
+                    <div class="form-group"><input type="date" id="noteDate"></div>
+                    <div class="form-group"><input type="text" id="noteTitle" placeholder="Título"></div>
+                    <div class="form-group"><textarea id="noteDesc" rows="2" placeholder="Detalle..."></textarea></div>
+                    <button class="filter-cta" onclick="APP.saveNote()"><i data-lucide="save"></i> Guardar Nota</button>
                 </div>
 
-                <div style="margin-top:var(--sp-5)">
-                    <button class="filter-btn" style="background:#1976D2" onclick="APP.exportData()"><i data-lucide="download"></i> Exportar JSON</button>
-                    <button class="filter-btn danger" style="margin-top:var(--sp-3)" onclick="APP.clearAllData()"><i data-lucide="trash-2"></i> Borrar Todo</button>
+                <div class="fs-block">
+                    <button class="filter-cta" style="background:var(--navy-2)" onclick="APP.exportData()"><i data-lucide="download"></i> Exportar JSON</button>
+                    <button class="filter-cta" style="background:var(--danger);margin-top:var(--sp-3)" onclick="APP.clearAllData()"><i data-lucide="trash-2"></i> Borrar Todo</button>
                 </div>
             </div>
-            <div class="card">
-                <div class="card-title"><span class="dot"></span> Historial Médico Consolidado</div>
+            <div class="card" style="margin-top:0">
+                <div class="card-head"><span class="card-title"><span class="dot"></span>Historial médico consolidado</span></div>
                 <div class="table-wrap">
                 <table class="data-table">
-                    <thead><tr><th>Fecha</th><th>Categoría</th><th>Evento / Descripción</th><th>Estado</th><th></th></tr></thead>
-                    <tbody id="historyBody"><tr><td colspan="5"><div class="empty-state"><span class="empty-emoji">🗂️</span><div class="empty-title">Sin eventos registrados</div></div></td></tr></tbody>
+                    <thead><tr><th>Fecha</th><th>Categoría</th><th>Evento / Descripción</th><th>Estado</th><th>Acción</th></tr></thead>
+                    <tbody id="historyBody"><tr><td colspan="5"><div class="empty-state"><div class="empty-icon"><i data-lucide="clipboard-list"></i></div><div class="empty-title">Sin eventos registrados</div></div></td></tr></tbody>
                 </table>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ============ TOAST (FASE 5) ============ -->
     <div id="toast"></div>
 
-    <!-- Scripts: config primero, luego db, validaciones, router, y app -->
     <script src="js/config.js"></script>
     <script src="js/db.js"></script>
     <script src="js/validaciones.js"></script>
     <script src="js/router.js"></script>
     <script src="js/app.js"></script>
-    <!-- Descomenta el siguiente para activar Supabase (requiere una <script> de supabase-js previa) -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> -->
-
 </body>
 </html>
