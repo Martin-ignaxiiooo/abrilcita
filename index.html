@@ -30,7 +30,7 @@
     <!-- ============ HEADER ============ -->
     <header class="topbar">
         <div class="brand">
-            <img src="assets/logo.svg" alt="Logo" class="brand-logo">
+            <div class="brand-logo" id="navAvatar"><img src="assets/logo.svg" alt="Logo"></div>
             <div>
                 <div class="brand-name" id="brandName">Abrilcita</div>
                 <div class="brand-sub">Control de Salud Gatuno</div>
@@ -146,6 +146,30 @@
                         <div class="empty-icon"><i data-lucide="bell"></i></div>
                         <div class="empty-title">Sin alertas</div>
                         <div class="empty-text">Los próximos vencimientos aparecerán aquí.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Evolución de peso -->
+        <div class="card" style="margin-top:var(--sp-5)">
+            <div class="card-head">
+                <span class="card-title"><span class="dot"></span>Evolución de peso</span>
+            </div>
+            <div class="grid cols-70-30">
+                <div class="chart-box" id="homeWeightChartBox"><canvas id="homeWeightChart"></canvas></div>
+                <div class="info-list">
+                    <div class="info-item">
+                        <div class="ii-icon"><i data-lucide="scale"></i></div>
+                        <div class="ii-body"><div class="ii-label">Peso actual</div><div class="ii-value" id="homeWeightCard">—</div></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="ii-icon"><i data-lucide="trending-up"></i></div>
+                        <div class="ii-body"><div class="ii-label">Tendencia</div><div class="ii-value"><span class="status" id="homeTrendBadge">Estable</span></div></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="ii-icon"><i data-lucide="line-chart"></i></div>
+                        <div class="ii-body"><div class="ii-label">Registros</div><div class="ii-value" id="homeWeightCount">0</div></div>
                     </div>
                 </div>
             </div>

@@ -260,6 +260,8 @@ const APP = (function () {
             const p = db.profile || {};
             // Brand + pet overview
             if ($('brandName')) $('brandName').textContent = p.name || 'Abrilcita';
+            const navAvatar = $('navAvatar');
+            if (navAvatar) navAvatar.innerHTML = p.photo ? '<img src="' + p.photo + '" alt="' + esc(p.name || '') + '">' : '<img src="assets/logo.svg" alt="Logo">';
             if ($('homeName')) $('homeName').textContent = p.name || 'Sin nombre';
             if ($('homeAge')) $('homeAge').textContent = calcAge(p.birth);
             if ($('homeWeight')) $('homeWeight').textContent = (p.weight ? p.weight + ' kg' : '—');
@@ -280,6 +282,9 @@ const APP = (function () {
 
             // KPIs protagonistas
             fillKpis(db);
+
+            // Gráfico de peso del home
+            renderHomeWeightChart(db);
 
             // Upcoming alerts
             renderAlerts(db);
@@ -328,6 +333,38 @@ const APP = (function () {
         const a = arr || [];
         if (!a.length) return 'none';
         return !a.some(x => x.next && new Date(x.next) < new Date());
+    }
+
+    let _homeWeightChart = null;
+    function renderHomeWeightChart(db) {
+        const el = $('homeWeightChart');
+        const weights = db.weights || [];
+        const listed = weights.slice(-12);
+        const cur = (db.profile && db.profile.weight) ? parseFloat(db.profile.weight) : (listed.length ? parseFloat(listed[listed.length-1].w) : null);
+        if ($('homeWeightCard')) $('homeWeightCard').textContent = cur ? cur + ' kg' : '—';
+        if ($('homeWeightCount')) $('homeWeightCount').textContent = weights.length + (weights.length === 1 ? ' registro' : ' registros');
+        const badge = $('homeTrendBadge');
+        if (badge) {
+            if (listed.length >= 2) {
+                const first = parseFloat(listed[0].w), last = parseFloat(listed[listed.length-1].w);
+                if (last > first) { badge.textContent = 'Subiendo'; badge.className = 'status status-warn'; }
+                else if (last < first) { badge.textContent = 'Bajando'; badge.className = 'status status-danger'; }
+                else { badge.textContent = 'Estable'; badge.className = 'status status-ok'; }
+            } else { badge.textContent = 'Estable'; badge.className = 'status status-ok'; }
+        }
+        if (_homeWeightChart) { _homeWeightChart.destroy(); _homeWeightChart = null; }
+        if (!el || !weights.length) return;
+        const labels = listed.map(w => { const d = new Date(w.d + 'T12:00:00'); return d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short' }); });
+        const data = listed.map(w => parseFloat(w.w));
+        _homeWeightChart = new Chart(el, {
+            type: 'line',
+            data: { labels, datasets: [{ label: 'Peso (kg)', data, borderColor: '#12A594', backgroundColor: 'rgba(18,165,148,0.18)', fill: true, tension: 0.35, pointBackgroundColor: '#12A594', pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 3, pointHoverRadius: 5 }] },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1B2A4A', titleColor: '#E6F7F5', bodyColor: '#fff', cornerRadius: 8, padding: 10 } },
+                scales: { y: { beginAtZero: false, grid: { color: '#F3F4F6' }, ticks: { color: '#9CA3AF' } }, x: { grid: { display: false }, ticks: { color: '#9CA3AF' } } }
+            }
+        });
     }
 
     function renderAlerts(db) {
