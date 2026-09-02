@@ -19,12 +19,12 @@ const APP_CONFIG = {
     // ---- MODO DE ALMACENAMIENTO ----
     // 'local'   : usa localStorage (sin backend, funcionamiento local)
     // 'supabase': usa Supabase (preparado para producción en Vercel)
-    storageMode: 'local',
+    storageMode: 'supabase',
 
     // ---- SUPABASE ----
     supabase: {
-        url: '',          // <-- PEGA AQUÍ tu proyecto URL, ej: 'https://xyzcompany.supabase.co'
-        anonKey: '',      // <-- PEGA AQUÍ tu anon/public key de Supabase
+        url: 'https://iwmfrkgrwircumwmaxve.supabase.co',
+        anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3bWZya2dyd2lyY3Vtd21heHZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzNTcyMjUsImV4cCI6MjEwMzkzMzIyNX0.NFYBJyVWz2MCoztLKMaLMFM7ILkL5NTTZYpnWny2fko',
         // Nombre de las tablas en Supabase (crear via script SQL)
         tables: {
             profile: 'profile',
