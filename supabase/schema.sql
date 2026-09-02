@@ -86,7 +86,7 @@ create table if not exists public.notes (
   id uuid primary key default gen_random_uuid(),
   date date not null,
   title text not null,
-  desc text,
+  description text,
   created_at timestamptz default now()
 );
 
@@ -113,7 +113,7 @@ create table if not exists public.food (
 create table if not exists public.food_changes (
   id uuid primary key default gen_random_uuid(),
   date date not null,
-  desc text not null,
+  description text not null,
   reason text,
   created_at timestamptz default now()
 );

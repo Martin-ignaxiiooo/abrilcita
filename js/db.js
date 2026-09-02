@@ -107,14 +107,14 @@ const DB = (function () {
             date: 'date', type: 'type', vet: 'vet', vetName: 'vet_name',
             reason: 'reason', weight: 'weight', result: 'result', cost: 'cost', notes: 'notes'
         },
-        notes: { date: 'date', title: 'title', desc: 'desc' },
+        notes: { date: 'date', title: 'title', desc: 'description' },
         food: {
             type: 'type', brand: 'brand', amount: 'amount', cost: 'cost',
             notes: 'notes', supplements: 'supplements', treats: 'treats',
             restrictions: 'restrictions', time1: 'time1', time2: 'time2',
             time3: 'time3', times: 'times'
         },
-        foodChanges: { date: 'date', desc: 'desc', reason: 'reason' },
+        foodChanges: { date: 'date', desc: 'description', reason: 'reason' },
         weights: { d: 'd', w: 'w' }
     };
 
