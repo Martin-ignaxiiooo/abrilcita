@@ -1,0 +1,24 @@
+# Dependencias / Node
+node_modules/
+package-lock.json
+yarn.lock
+
+# Variables de entorno / secretos (¡NUNCA subir!)
+.env
+.env.local
+.env.production
+
+# Verificando que no se suban claves
+*.env
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema / editor
+.DS_Store
+Thumbs.db
+.vercel/
+.vscode/
+.idea/
