@@ -116,7 +116,8 @@ const DB = (function () {
             time3: 'time3', times: 'times'
         },
         foodChanges: { date: 'date', desc: 'description', reason: 'reason' },
-        weights: { d: 'd', w: 'w' }
+        weights: { d: 'd', w: 'w' },
+        medications: { name: 'name', dose: 'dose', inst: 'inst' }
     };
 
     // Convierte fila de Supabase (snake) -> doc app (camel)
@@ -154,7 +155,8 @@ const DB = (function () {
             [t.controls, 'controls', FIELD_MAPS.controls],
             [t.notes, 'notes', FIELD_MAPS.notes],
             [t.foodChanges, 'foodChanges', FIELD_MAPS.foodChanges],
-            [t.weights, 'weights', FIELD_MAPS.weights]
+            [t.weights, 'weights', FIELD_MAPS.weights],
+            [t.medications, 'medications', FIELD_MAPS.medications]
         ];
         for (const [table, key, map] of tablesMap) {
             const { data } = await supabaseClient.from(table).select('*');
@@ -202,7 +204,8 @@ const DB = (function () {
             [t.controls, 'controls', FIELD_MAPS.controls],
             [t.notes, 'notes', FIELD_MAPS.notes],
             [t.foodChanges, 'foodChanges', FIELD_MAPS.foodChanges],
-            [t.weights, 'weights', FIELD_MAPS.weights]
+            [t.weights, 'weights', FIELD_MAPS.weights],
+            [t.medications, 'medications', FIELD_MAPS.medications]
         ];
         for (const [table, key, map] of tablesMap) {
             // Borrar todas las filas de la tabla

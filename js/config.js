@@ -34,7 +34,8 @@ const APP_CONFIG = {
             notes: 'notes',
             food: 'food',
             foodChanges: 'food_changes',
-            weights: 'weights'
+            weights: 'weights',
+            medications: 'medications'
         }
     },
 

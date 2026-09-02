@@ -126,6 +126,15 @@ create table if not exists public.weights (
   created_at timestamptz default now()
 );
 
+-- MEDICACI�"N ACTIVA (agregado en redise�o Clinical Dashboard)
+create table if not exists public.medications (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  dose text,
+  inst text,
+  created_at timestamptz default now()
+);
+
 -- ============================================================
 -- D) ÍNDICES (para consultas más rápidas por fecha)
 -- ============================================================
@@ -135,7 +144,7 @@ create index if not exists idx_controls_date on public.controls(date);
 create index if not exists idx_notes_date on public.notes(date);
 create index if not exists idx_food_changes_date on public.food_changes(date);
 create index if not exists idx_weights_date on public.weights(d);
-
+create index if not exists idx_medications_created on public.medications(created_at);
 -- ============================================================
 -- E) ROW LEVEL SECURITY (RLS)
 --    IMPORTANTE: La app actual NO usa login de usuarios.
@@ -151,6 +160,7 @@ alter table public.notes enable row level security;
 alter table public.food enable row level security;
 alter table public.food_changes enable row level security;
 alter table public.weights enable row level security;
+alter table public.medications enable row level security;
 
 -- Policy: permitir todo para anon (sin login)
 -- ⚠️ Usa esto SOLO para uso personal (una sola gatita, sin datos sensibles)
@@ -162,6 +172,7 @@ create policy "Allow full access notes" on public.notes for all using (true) wit
 create policy "Allow full access food" on public.food for all using (true) with check (true);
 create policy "Allow full access food_changes" on public.food_changes for all using (true) with check (true);
 create policy "Allow full access weights" on public.weights for all using (true) with check (true);
+create policy "Allow full access medications" on public.medications for all using (true) with check (true);
 
 -- ============================================================
 -- F) NOTA SOBRE AUTH (OPCIONAL, a futuro)
