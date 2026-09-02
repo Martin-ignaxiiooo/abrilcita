@@ -278,9 +278,49 @@ const APP = (function () {
             if (vaxS) { vaxS.textContent = vaxOk === 'none' ? 'Sin registros' : (vaxOk ? 'Al día' : 'Un vencimiento'); vaxS.className = 'status ' + (vaxOk === 'none' ? 'status-pend' : (vaxOk ? 'status-ok' : 'status-danger')); }
             if (despS) { despS.textContent = despOk === 'none' ? 'Sin registros' : (despOk ? 'Al día' : 'Pendiente'); despS.className = 'status ' + (despOk === 'none' ? 'status-pend' : (despOk ? 'status-ok' : 'status-danger')); }
 
+            // KPIs protagonistas
+            fillKpis(db);
+
             // Upcoming alerts
             renderAlerts(db);
         });
+    }
+
+    function fillKpis(db) {
+        const p = db.profile || {};
+        const w = $('kpiWeight'); if (w) w.textContent = (p.weight ? p.weight + ' kg' : '—');
+        const a = $('kpiAge'); if (a) a.textContent = calcAge(p.birth);
+
+        const nextVax = nextExpiry(db.vaccines);
+        const nv = $('kpiNextVax'), nvs = $('kpiNextVaxSub');
+        if (nv) { nv.textContent = nextVax ? fmtDate(nextVax) : '—'; if (nvs) nvs.textContent = nextVax ? (new Date(nextVax) < new Date() ? 'vencida' : 'próximo refuerzo') : 'sin refuerzos'; }
+
+        const nextDesp = nextExpiry(db.deworming);
+        const nd = $('kpiNextDesp'), nds = $('kpiNextDespSub');
+        if (nd) { nd.textContent = nextDesp ? fmtDate(nextDesp) : '—'; if (nds) nds.textContent = nextDesp ? (new Date(nextDesp) < new Date() ? 'vencida' : 'próxima aplicación') : 'sin datos'; }
+    }
+
+    // Devuelve la fecha 'next' más próxima (o la más antigua vencida) o null
+    function nextExpiry(arr) {
+        const a = (arr || []).filter(x => x.next);
+        if (!a.length) return null;
+        const sorted = a.map(x => x.next).sort((x, y) => String(x).localeCompare(y));
+        const today = new Date().toISOString().slice(0, 10);
+        const upcoming = sorted.find(d => d >= today);
+        return upcoming || sorted[0];
+    }
+
+    // Llena los 4 KPIs de una colección (vacunas/desparasitación) dado un prefijo de ids
+    function fillCollectionKpis(arr, prefix) {
+        const list = arr || [];
+        const overdue = list.filter(x => x.next && new Date(x.next) < new Date()).length;
+        const ok = list.length - overdue;
+        const next = nextExpiry(list);
+        const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+        set(prefix + 'Total', list.length);
+        set(prefix + 'Ok', ok);
+        set(prefix + 'Overdue', overdue);
+        set(prefix + 'Next', next ? fmtDate(next) : '—');
     }
 
     // true=al día, false=algo vencido, 'none'=sin datos
@@ -492,6 +532,7 @@ const APP = (function () {
 
     async function renderAllVaccines() {
         const db = await DB.get();
+        fillCollectionKpis(db.vaccines, 'vaxKpi');
         const el = $('vaxBody');
         renderCalendar();
         if (!(db.vaccines || []).length) { el.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon"><i data-lucide="syringe"></i></div><div class="empty-title">Sin vacunas registradas</div><div class="empty-text">Agrega la primera vacuna para empezar el carnet.</div><button class="btn btn-primary" onclick="APP.focusField(\'vaxType\')">Registrar vacuna</button></div></td></tr>'; refreshIcons(); renderVaccineCard(); return; }
@@ -557,6 +598,7 @@ const APP = (function () {
 
     async function renderAllDeworming() {
         const db = await DB.get();
+        fillCollectionKpis(db.deworming, 'despKpi');
         const el = $('despBody');
         if (!el) return;
         if (!(db.deworming || []).length) { el.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon"><i data-lucide="droplet"></i></div><div class="empty-title">Sin registros de desparasitación</div><div class="empty-text">Registra la primera aplicación para controlar parásitos.</div><button class="btn btn-primary" onclick="APP.focusField(\'despType\')">Registrar</button></div></td></tr>'; refreshIcons(); return; }

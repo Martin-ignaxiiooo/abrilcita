@@ -56,6 +56,42 @@
             </div>
         </div>
 
+        <!-- KPI protagonistas -->
+        <div class="kpi-row">
+            <div class="kpi-card hero">
+                <div class="kc-icon"><i data-lucide="scale"></i></div>
+                <div class="kc-body">
+                    <div class="kc-label">Peso actual</div>
+                    <div class="kc-value" id="kpiWeight">—</div>
+                    <div class="kc-sub">Último registrado</div>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kc-icon"><i data-lucide="cake"></i></div>
+                <div class="kc-body">
+                    <div class="kc-label">Edad</div>
+                    <div class="kc-value" id="kpiAge">—</div>
+                    <div class="kc-sub">del nacimiento</div>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kc-icon"><i data-lucide="syringe"></i></div>
+                <div class="kc-body">
+                    <div class="kc-label">Próxima vacuna</div>
+                    <div class="kc-value" id="kpiNextVax">—</div>
+                    <div class="kc-sub" id="kpiNextVaxSub">próximo refuerzo</div>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kc-icon"><i data-lucide="droplet"></i></div>
+                <div class="kc-body">
+                    <div class="kc-label">Desparasitación</div>
+                    <div class="kc-value" id="kpiNextDesp">—</div>
+                    <div class="kc-sub" id="kpiNextDespSub">próxima aplicación</div>
+                </div>
+            </div>
+        </div>
+
         <div class="grid cols-3">
             <!-- Pet Overview -->
             <div class="card">
@@ -151,6 +187,40 @@
                 <div class="page-sub">Control de inmunización de Abrilcita</div>
             </div>
         </div>
+        <div class="kpi-row">
+            <div class="kpi-card hero">
+                <div class="kc-icon"><i data-lucide="syringe"></i></div>
+                <div class="kc-body">
+                    <div class="kc-label">Total vacunas</div>
+                    <div class="kc-value" id="vaxKpiTotal">0</div>
+                    <div class="kc-sub">registradas</div>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kc-icon"><i data-lucide="shield-check"></i></div>
+                <div class="kc-body">
+                    <div class="kc-label">Al día</div>
+                    <div class="kc-value" id="vaxKpiOk">0</div>
+                    <div class="kc-sub">sin vencimiento</div>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kc-icon"><i data-lucide="alert-triangle"></i></div>
+                <div class="kc-body">
+                    <div class="kc-label">Vencidas</div>
+                    <div class="kc-value" id="vaxKpiOverdue">0</div>
+                    <div class="kc-sub">refuerzos atrasados</div>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kc-icon"><i data-lucide="calendar-clock"></i></div>
+                <div class="kc-body">
+                    <div class="kc-label">Próximo refuerzo</div>
+                    <div class="kc-value" id="vaxKpiNext">—</div>
+                    <div class="kc-sub">fecha más próxima</div>
+                </div>
+            </div>
+        </div>
         <div class="grid cols-70-30">
             <div class="card">
                 <div class="card-head">
@@ -206,6 +276,40 @@
                 <div class="page-sub">Control de parásitos internos y externos</div>
             </div>
             <button class="btn btn-primary" onclick="document.getElementById('despNew').scrollIntoView({behavior:'smooth'})"><i data-lucide="plus"></i> Añadir Nuevo Tratamiento</button>
+        </div>
+        <div class="kpi-row">
+            <div class="kpi-card hero">
+                <div class="kc-icon"><i data-lucide="bug"></i></div>
+                <div class="kc-body">
+                    <div class="kc-label">Total tratamientos</div>
+                    <div class="kc-value" id="despKpiTotal">0</div>
+                    <div class="kc-sub">registrados</div>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kc-icon"><i data-lucide="shield-check"></i></div>
+                <div class="kc-body">
+                    <div class="kc-label">Al día</div>
+                    <div class="kc-value" id="despKpiOk">0</div>
+                    <div class="kc-sub">sin vencimiento</div>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kc-icon"><i data-lucide="alert-triangle"></i></div>
+                <div class="kc-body">
+                    <div class="kc-label">Vencidas</div>
+                    <div class="kc-value" id="despKpiOverdue">0</div>
+                    <div class="kc-sub">aplicaciones atrasadas</div>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kc-icon"><i data-lucide="calendar-clock"></i></div>
+                <div class="kc-body">
+                    <div class="kc-label">Próxima aplicación</div>
+                    <div class="kc-value" id="despKpiNext">—</div>
+                    <div class="kc-sub">fecha más próxima</div>
+                </div>
+            </div>
         </div>
         <div class="grid cols-70-30">
             <div class="card">

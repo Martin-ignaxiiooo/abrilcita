@@ -243,6 +243,50 @@ a:hover { text-decoration: underline; }
 .status-teal  { background: var(--teal-light); color: var(--teal-dark); }
 
 /* ============================================================
+   KPI ROW (jerarquía de información — datos protagonistas)
+   ============================================================ */
+.kpi-row {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-4);
+    margin-bottom: var(--sp-5);
+}
+.kpi-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r-lg); box-shadow: var(--shadow-md);
+    padding: var(--sp-5); display: flex; align-items: center; gap: var(--sp-4);
+    transition: all var(--t);
+}
+.kpi-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+.kpi-card .kc-icon {
+    width: 48px; height: 48px; border-radius: var(--r-lg); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--teal-light); color: var(--teal-dark);
+}
+.kpi-card .kc-icon svg { width: 24px; height: 24px; }
+.kpi-card .kc-body { min-width: 0; }
+.kpi-card .kc-label { font-size: var(--fs-xs); color: var(--gray-500); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.kpi-card .kc-value { font-size: 1.35rem; font-weight: 800; color: var(--gray-800); line-height: 1.2; white-space: nowrap; }
+.kpi-card .kc-sub { font-size: var(--fs-xs); color: var(--gray-500); }
+.kpi-card.hero {
+    background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+    border: none; color: #fff; box-shadow: var(--shadow-teal);
+}
+.kpi-card.hero .kc-icon { background: rgba(255,255,255,0.18); color: #fff; }
+.kpi-card.hero .kc-label { color: rgba(255,255,255,0.85); }
+.kpi-card.hero .kc-value { color: #fff; }
+.kpi-card.hero .kc-sub { color: rgba(255,255,255,0.85); }
+.kpi-card.hero:hover { box-shadow: var(--shadow-teal); }
+
+@media (max-width: 1000px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) {
+    .kpi-row { grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+    .kpi-card { padding: var(--sp-3); gap: var(--sp-3); flex-direction: row; }
+    .kpi-card .kc-icon { width: 40px; height: 40px; }
+    .kpi-card .kc-icon svg { width: 20px; height: 20px; }
+    .kpi-card .kc-value { font-size: 1.15rem; }
+}
+
+
+/* ============================================================
    INFO LIST ITEM (8.8)
    ============================================================ */
 .info-list { display: flex; flex-direction: column; }
