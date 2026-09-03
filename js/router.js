@@ -15,6 +15,12 @@ const ROUTER = (function () {
             navigate(btn.dataset.page);
         });
 
+        // Animación de entrada en la carga inicial (página inicio activa por defecto)
+        const initial = window.location.hash.replace('#/', '');
+        const firstPage = pages.includes(initial) ? initial : 'inicio';
+        const fp = document.getElementById(firstPage);
+        if (fp) { fp.classList.add('active'); fp.classList.add('animating'); }
+
         // Manejar hash para deep-linking (ej: #/vacunas)
         window.addEventListener('hashchange', () => {
             const hash = window.location.hash.replace('#/', '');
@@ -22,7 +28,6 @@ const ROUTER = (function () {
         });
 
         // Navegación inicial desde hash
-        const initial = window.location.hash.replace('#/', '');
         if (pages.includes(initial)) {
             navigate(initial, true);
         }
@@ -33,7 +38,12 @@ const ROUTER = (function () {
 
         // Actualizar páginas visibles
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        document.getElementById(pageName).classList.add('active');
+        const target = document.getElementById(pageName);
+        target.classList.add('active');
+        // Reiniciar animación de entrada en cada navegación (fuera de .page param animación con reflow)
+        target.classList.remove('animating');
+        void target.offsetWidth; // forzar reflow
+        target.classList.add('animating');
 
         // Actualizar botones nav
         document.querySelectorAll('.navtabs button').forEach(b => b.classList.remove('active'));

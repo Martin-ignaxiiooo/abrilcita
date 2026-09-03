@@ -298,8 +298,13 @@ const APP = (function () {
 
     function fillKpis(db) {
         const p = db.profile || {};
-        const w = $('kpiWeight'); if (w) w.textContent = (p.weight ? p.weight + ' kg' : '—');
-        const a = $('kpiAge'); if (a) a.textContent = calcAge(p.birth);
+        const w = $('kpiWeight');
+        if (w) {
+            if (p.weight) { animateValue(w, p.weight, { suffix: ' kg', decimals: 1 }); pulse(w); }
+            else w.textContent = '—';
+        }
+        const a = $('kpiAge');
+        if (a) { a.textContent = calcAge(p.birth); pulse(a); }
 
         // Micro-tendencia del peso en el hero (comparación con el último registro)
         const wt = $('kpiWeightTrend');
@@ -511,6 +516,7 @@ const APP = (function () {
                 '<button class="btn btn-link btn-sm" onclick="APP.delControl(\'' + v.id + '\')" style="margin-top:var(--sp-2)">Eliminar visita</button>' +
                 '</div></div>'
             ).join('');
+            staggerRows(el, '.tl-item');
             refreshIcons();
         });
     }
@@ -542,6 +548,7 @@ const APP = (function () {
                 '<div class="ii-badge" style="display:flex;gap:6px"><button class="btn btn-link btn-sm" onclick="APP.delMedication(\'' + m.id + '\')">Quitar</button></div>' +
                 '</div>'
             ).join('');
+            staggerRows(el, '.info-item');
             refreshIcons();
         });
     }
@@ -618,6 +625,7 @@ const APP = (function () {
         }).join('');
         refreshIcons();
         renderVaccineCard(db);
+        staggerRows(el);
         refreshIcons();
     }
 
@@ -681,6 +689,7 @@ const APP = (function () {
             const icon = dw.type === 'Externa' ? 'droplet' : (dw.type === 'Ambas' ? 'shield' : 'syringe');
             return '<tr><td><div style="display:flex;align-items:center;gap:8px"><i data-lucide="' + icon + '" style="width:16px;height:16px;color:var(--teal)"></i> ' + esc(dw.type) + '</div></td><td>' + fmtDate(dw.date) + '</td><td><strong>' + esc(dw.product || '—') + '</strong></td><td>' + esc(dw.dose || '—') + '</td><td>' + (dw.next ? fmtDate(dw.next) : '—') + '</td><td><button class="btn btn-danger btn-sm" onclick="APP.delDeworming(\'' + dw.id + '\')">✕</button></td></tr>';
         }).join('');
+        staggerRows(el);
         refreshIcons();
     }
 
@@ -881,6 +890,7 @@ const APP = (function () {
                 return '<tr><td>' + fmtDate(i.date) + '</td><td><span style="display:inline-flex;align-items:center;gap:7px"><i data-lucide="' + catIcons[i.type] + '" style="width:16px;height:16px;color:var(--teal)"></i>' + i.cat + '</span></td><td><strong>' + esc(i.desc) + '</strong></td><td>' + badge + '</td>' +
                     '<td><button class="btn btn-link btn-sm" onclick="APP.delHistoryItem(\'' + i.type + '\',\'' + i.id + '\')" title="Eliminar">' + action + '</button></td></tr>';
             }).join('');
+            staggerRows(el);
             refreshIcons();
         }
 
