@@ -1,13 +1,13 @@
 /* ==================================================
    Abrilcita - db.js
-   Capa de datos: abstracción entre localStorage y Supabase
+   Capa de datos: Supabase (persistencia única en la nube)
    ==================================================
-   Diseñado para preparar la migración a Supabase + Vercel.
-   Todas las operaciones de datos pasan por aquí.
+   Todos los datos se guardan en Supabase. No se usa
+   localStorage: los datos viven en la nube y se
+   sincronizan entre dispositivos.
    ================================================== */
 
 const DB = (function () {
-    const LOCAL_STORAGE_KEY = 'abrilcita_db_v1';
 
     // ---------- SCHEMA / TABLAS (mismo formato en ambos modos) ----------
     const defaultDoc = () => ({
@@ -37,51 +37,15 @@ const DB = (function () {
         return supabaseClient;
     }
 
-    // ---------- SERIALIZACIÓN PARCIAL (evita guardar photo en base) ----------
-    // En Supabase la foto se guarda en Storage; aquí la mantenemos en localStorage.
-
     // ---------- MÉTODOS ----------
-    function isSupabase() {
-        return window.APP_CONFIG.storageMode === 'supabase';
-    }
-
-    // GET completo
+    // GET completo (siempre desde Supabase)
     async function get() {
-        if (isSupabase()) {
-            return await getFromSupabase();
-        }
-        return getLocal();
+        return await getFromSupabase();
     }
 
-    // SAVE completo
+    // SAVE completo (siempre a Supabase)
     async function save(doc) {
-        if (isSupabase()) {
-            return await saveToSupabase(doc);
-        }
-        saveLocal(doc);
-        return true;
-    }
-
-    // ---------- LOCAL STORAGE ----------
-    function getLocal() {
-        try {
-            const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
-            if (!raw) return defaultDoc();
-            const doc = JSON.parse(raw);
-            // Merge con schema por si faltan colecciones nuevas
-            return { ...defaultDoc(), ...doc };
-        } catch (e) {
-            console.error('Error leyendo localStorage', e);
-            return defaultDoc();
-        }
-    }
-
-    function saveLocal(doc) {
-        try {
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(doc));
-        } catch (e) {
-            console.error('Error guardando localStorage', e);
-        }
+        return await saveToSupabase(doc);
     }
 
     // ---------- SUPABASE ----------
@@ -230,34 +194,16 @@ const DB = (function () {
     }
 
     // ---------- UTILIDADES ----------
+    // UUID v4 (columna uuid en Supabase)
     function genId() {
-        if (isSupabase()) {
-            // UUID v4 para Supabase (podría requerir uuid column type)
-            return crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-                const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
-            });
-        }
-        return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-    }
-
-    // ---------- MIGRACIÓN UTILITARIA ----------
-    // Exporta el documento local para poder migrarlo a Supabase
-    function exportLocalDocument() {
-        return getLocal();
-    }
-
-    // Importa un JSON externo al modo local (backup/restauración)
-    function importLocalDocument(doc) {
-        const merged = { ...defaultDoc(), ...doc };
-        saveLocal(merged);
-        return merged;
+        return crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+            const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
     }
 
     return {
-        get, save, genId,
-        isSupabase, exportLocalDocument, importLocalDocument,
-        localStorageKey: LOCAL_STORAGE_KEY
+        get, save, genId
     };
 })();
 

@@ -17,8 +17,7 @@ const APP_CONFIG = {
     version: '1.0.0',
 
     // ---- MODO DE ALMACENAMIENTO ----
-    // 'local'   : usa localStorage (sin backend, funcionamiento local)
-    // 'supabase': usa Supabase (preparado para producción en Vercel)
+    // Todo se guarda en Supabase (persistencia única en la nube).
     storageMode: 'supabase',
 
     // ---- SUPABASE ----

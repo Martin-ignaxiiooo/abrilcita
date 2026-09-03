@@ -877,13 +877,9 @@ const APP = (function () {
     async function clearAllData() {
         if (!confirm('¿Borrar TODOS los datos de Abrilcita?')) return;
         if (!confirm('¿Definitivamente?')) return;
-        if (DB.isSupabase()) {
-            // En modo Supabase borrar tablas
-            await DB.save({ profile: {}, vaccines: [], deworming: [], controls: [], notes: [], food: {}, foodChanges: [], weights: [], medications: [] });
-            toast('Datos borrados de Supabase.');
-        } else {
-            localStorage.removeItem(DB.localStorageKey);
-        }
+        // Borrar todas las tablas de Supabase
+        await DB.save({ profile: {}, vaccines: [], deworming: [], controls: [], notes: [], food: {}, foodChanges: [], weights: [], medications: [] });
+        toast('Datos borrados de Supabase.');
         location.reload();
     }
 
