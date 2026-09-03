@@ -44,7 +44,7 @@
             <button data-page="controles"><i data-lucide="stethoscope"></i> Controles</button>
             <button data-page="historial"><i data-lucide="clipboard-list"></i> Historial</button>
         </nav>
-        <div class="clock-pill" id="clock"><i data-lucide="clock"></i> --:--</div>
+        <button class="quick-add-btn" onclick="APP.quickAdd()"><i data-lucide="plus"></i> Registrar</button>
     </header>
 
     <!-- ============ INICIO / HOME ============ -->
@@ -63,7 +63,7 @@
                 <div class="kc-body">
                     <div class="kc-label">Peso actual</div>
                     <div class="kc-value" id="kpiWeight">—</div>
-                    <div class="kc-sub">Último registrado</div>
+                    <div class="kc-sub" id="kpiWeightTrend">Último registrado</div>
                 </div>
             </div>
             <div class="kpi-card">
@@ -98,13 +98,13 @@
                 <div class="card-head">
                     <span class="card-title">Vista general</span>
                 </div>
-                <div class="pet-photo">
-                    <div class="pet-emoji" id="catAvatar"><i data-lucide="cat" class="pet-fallback-icon"></i></div>
+                <div class="pet-photo no-photo">
+                    <div class="pet-emoji" id="catAvatar"><i data-lucide="cat"></i><span class="pet-fallback-text">Haz clic para subir foto</span></div>
                     <input type="file" id="catPhoto" accept="image/*">
                 </div>
                 <div class="pet-name-row">
                     <h3 id="homeName">Sin nombre</h3>
-                    <button class="btn-link btn-sm" onclick="APP.toggleProfileEdit()"><i data-lucide="pencil"></i> Editar</button>
+                    <button class="btn btn-primary btn-sm" onclick="APP.toggleProfileEdit()"><i data-lucide="pencil"></i> Editar</button>
                 </div>
                 <div class="pet-stats">
                     <div class="pet-stat"><div class="ps-label">Edad</div><div class="ps-value" id="homeAge">—</div></div>
@@ -406,12 +406,7 @@
                     </div>
                     <div style="margin-top:var(--sp-4)">
                         <div class="card-title" style="font-size:var(--fs-sm);font-weight:600">Requisitos especiales y alergias</div>
-                        <div class="checklist" id="dietRestrictions">
-                            <label class="check-row"><input type="checkbox" id="drNoPoll"> Sin pollo</label>
-                            <label class="check-row"><input type="checkbox" id="drNoLact"> Sin lactosa</label>
-                            <label class="check-row"><input type="checkbox" id="drNoGranos"> Sin granos</label>
-                            <label class="check-row"><input type="checkbox" id="drHighProt"> Alta en proteínas</label>
-                        </div>
+                        <div class="restriction-tags" id="dietRestrictions"></div>
                     </div>
                 </div>
                 <div class="card">
@@ -421,7 +416,7 @@
             </div>
             <div class="card" style="margin-top:0">
                 <div class="card-head"><span class="card-title"><span class="dot"></span>Evolución de peso</span></div>
-                <div class="chart-box"><canvas id="weightChart"></canvas></div>
+                <div class="chart-box" id="weightChartBox"><canvas id="weightChart"></canvas></div>
                 <div class="chart-summary">
                     <span class="cs-item">Peso actual: <strong id="chartWeight">—</strong></span>
                     <span class="cs-item">Tendencia: <span class="status status-ok" id="chartTrend">Estable</span></span>
@@ -447,6 +442,15 @@
             <div class="form-row">
                 <div class="form-group"><label for="foodSupplements">Suplementos / Vitaminas</label><div class="input-wrap"><i data-lucide="vitamins"></i><input type="text" id="foodSupplements" placeholder="Aceite de salmón, Taurina..."></div></div>
                 <div class="form-group"><label for="foodTreats">Treats / Premios</label><div class="input-wrap"><i data-lucide="candy"></i><input type="text" id="foodTreats" placeholder="Dreamies, etc."></div></div>
+            </div>
+            <div class="form-group">
+                <label>Requisitos especiales y alergias</label>
+                <div class="checklist">
+                    <label class="check-row"><input type="checkbox" id="drNoPoll"> Sin pollo</label>
+                    <label class="check-row"><input type="checkbox" id="drNoLact"> Sin lactosa</label>
+                    <label class="check-row"><input type="checkbox" id="drNoGranos"> Sin granos</label>
+                    <label class="check-row"><input type="checkbox" id="drHighProt"> Alta en proteínas</label>
+                </div>
             </div>
             <button class="btn btn-primary" onclick="APP.saveFood()"><i data-lucide="save"></i> Guardar Dieta</button>
         </div>

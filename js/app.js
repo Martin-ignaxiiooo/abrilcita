@@ -140,16 +140,6 @@ const APP = (function () {
         update();
     }
 
-    // Live clock en la barra superior
-    function startClock() {
-        function tick() {
-            const el = $('clock');
-            if (el) el.textContent = new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
-        }
-        tick();
-        setInterval(tick, 20000);
-    }
-
     function calcAge(birth) {
         if (!birth) return '—';
         const b = new Date(birth), now = new Date();
@@ -163,9 +153,7 @@ const APP = (function () {
         // Cargar foto desde DB
         try {
             const db = await DB.get();
-            if (db.profile && db.profile.photo) {
-                $('catAvatar').innerHTML = '<img src="' + db.profile.photo + '">';
-            }
+            applyPhotoUI(db.profile && db.profile.photo ? db.profile.photo : '', 'navAvatar');
             renderHome();
             renderDietStats();
             refreshIcons();
@@ -176,8 +164,7 @@ const APP = (function () {
         // Configurar foto upload
         $('catPhoto').addEventListener('change', handlePhotoUpload);
 
-        // Dinamismo: reloj + validación en vivo + contador de caracteres
-        startClock();
+        // Dinamismo: validación en vivo + contador de caracteres
         bindLiveValidation('formP', 'p', VALIDATORS.validateProfile, ['name','birth','breed','weight','rut','vetPhone','vet','color']);
         bindLiveValidation('formVax', 'vax', VALIDATORS.validateVaccine, ['type','date','next','cost','lot','lab','vet','notes']);
         bindLiveValidation('formDesp', 'desp', VALIDATORS.validateDeworming, ['type','date','next','product','dose','weight','cost']);
@@ -208,16 +195,34 @@ const APP = (function () {
     }
 
     // ============ FOTO ============
+    function applyPhotoUI(photo, navAvatarId) {
+        const box = $('catAvatar') ? $('catAvatar').closest('.pet-photo') : null;
+        if ($('catAvatar')) {
+            if (photo) {
+                $('catAvatar').innerHTML = '<img src="' + photo + '">';
+                if (box) box.classList.remove('no-photo'); box.classList.add('has-photo');
+            } else {
+                $('catAvatar').innerHTML = '<i data-lucide="cat"></i><span class="pet-fallback-text">Haz clic para subir foto</span>';
+                if (box) box.classList.add('no-photo'); box.classList.remove('has-photo');
+            }
+        }
+        if (navAvatarId && $(navAvatarId)) {
+            if (photo) { $(navAvatarId).innerHTML = '<img src="' + photo + '">'; }
+            else { $(navAvatarId).innerHTML = '<i data-lucide="cat"></i>'; }
+        }
+        refreshIcons();
+    }
+
     function handlePhotoUpload(e) {
         const file = e.target.files[0];
         if (!file) return;
         if (!file.type.startsWith('image/')) { toast('Debes seleccionar una imagen.', 'error'); return; }
         const reader = new FileReader();
         reader.onload = async function (ev) {
-            $('catAvatar').innerHTML = '<img src="' + ev.target.result + '">';
             const db = await DB.get();
             db.profile.photo = ev.target.result;
             await DB.save(db);
+            applyPhotoUI(ev.target.result, 'navAvatar');
             toast('Foto actualizada.');
         };
         reader.readAsDataURL(file);
@@ -295,6 +300,24 @@ const APP = (function () {
         const p = db.profile || {};
         const w = $('kpiWeight'); if (w) w.textContent = (p.weight ? p.weight + ' kg' : '—');
         const a = $('kpiAge'); if (a) a.textContent = calcAge(p.birth);
+
+        // Micro-tendencia del peso en el hero (comparación con el último registro)
+        const wt = $('kpiWeightTrend');
+        if (wt) {
+            const wl = (db.weights || []).slice().sort((x, y) => String(x.d).localeCompare(String(y.d)));
+            if (wl.length >= 2) {
+                const prev = parseFloat(wl[wl.length - 2].w), last = parseFloat(wl[wl.length - 1].w);
+                const diff = last - prev;
+                const sign = diff > 0 ? '+' : (diff < 0 ? '' : '');
+                const arrow = diff > 0 ? '&#9650;' : (diff < 0 ? '&#9660;' : '&#9679;');
+                const cls = diff > 0 ? 'hero-trend-up' : (diff < 0 ? 'hero-trend-down' : 'hero-trend-flat');
+                wt.innerHTML = '<span class="' + cls + '">' + arrow + ' ' + sign + diff.toFixed(1) + ' kg vs anterior</span>';
+            } else if (wl.length === 1) {
+                wt.innerHTML = '<span class="hero-trend-flat">&#9679; Primer registro</span>';
+            } else {
+                wt.textContent = 'Último registrado';
+            }
+        }
 
         const nextVax = nextExpiry(db.vaccines);
         const nv = $('kpiNextVax'), nvs = $('kpiNextVaxSub');
@@ -407,10 +430,17 @@ const APP = (function () {
             if ($('dietType')) $('dietType').textContent = f.type || '—';
             if ($('dietAmount')) $('dietAmount').textContent = f.amount || '—';
             if ($('dietTimes')) $('dietTimes').textContent = timesMap[f.times] || '—';
-            // restricciones
-            const set = new Set(String(f.restrictions || '').split(',').map(s => s.trim().toLowerCase()));
-            const map = { 'sin pollo': 'drNoPoll', 'sin lactosa': 'drNoLact', 'sin granos': 'drNoGranos', 'alta en proteinas': 'drHighProt' };
-            Object.keys(map).forEach(k => { const el = $(map[k]); if (el) el.checked = set.has(k); });
+            // restricciones: tags dinámicos según lo guardado
+            const restCont = $('dietRestrictions');
+            if (restCont) {
+                const list = String(f.restrictions || '').split(',').map(s => s.trim()).filter(Boolean);
+                if (list.length) {
+                    restCont.innerHTML = list.map(t => '<span class="tag">' + esc(t) + '</span>').join('');
+                } else {
+                    restCont.innerHTML = '<span class="restriction-empty">Sin alergias ni requisitos especiales</span>';
+                }
+                refreshIcons();
+            }
         });
     }
 
@@ -430,6 +460,14 @@ const APP = (function () {
         form.style.display = 'block';
         refreshIcons();
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function quickAdd() {
+        ROUTER.navigate('controles');
+        const form = $('visitForm');
+        if (form) { form.style.display = 'block'; refreshIcons(); }
+        const first = form ? form.querySelector('input, select, textarea') : null;
+        if (first) { first.scrollIntoView({ behavior: 'smooth', block: 'center' }); first.focus(); }
     }
 
     async function saveControl() {
@@ -691,6 +729,10 @@ const APP = (function () {
             setVal('foodTreats', f.treats); setVal('foodRestrictions', f.restrictions);
             setVal('foodTime1', f.time1); setVal('foodTime2', f.time2);
             setVal('foodTime3', f.time3); setVal('foodTimes', f.times);
+            // checkboxes de restricciones según lo guardado
+            const set = new Set(String(f.restrictions || '').split(',').map(s => s.trim().toLowerCase()));
+            const map = { 'sin pollo': 'drNoPoll', 'sin lactosa': 'drNoLact', 'sin granos': 'drNoGranos', 'alta en proteinas': 'drHighProt' };
+            Object.keys(map).forEach(k => { const el = $(map[k]); if (el) el.checked = set.has(k); });
         });
     }
 
@@ -714,7 +756,14 @@ const APP = (function () {
             } else { trend.textContent = 'Estable'; trend.className = 'status status-ok'; }
         }
         if (_weightChart) { _weightChart.destroy(); _weightChart = null; }
-        if (!weights.length) { return; }
+        if (!weights.length) {
+            const box = $('weightChartBox');
+            if (box) {
+                box.innerHTML = '<div class="empty-state"><div class="empty-icon"><i data-lucide="line-chart"></i></div><div class="empty-title">Sin registros de peso</div><div class="empty-text">Registra un control o edita el perfil para empezar la evolución.</div><button class="btn btn-primary" onclick="APP.focusField(\'pWeight\')">Registrar peso</button></div>';
+                refreshIcons();
+            }
+            return;
+        }
         const labels = listed.map(w => { const d = new Date(w.d + 'T12:00:00'); return d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short' }); });
         const data = listed.map(w => parseFloat(w.w));
         _weightChart = new Chart(el, {
@@ -903,7 +952,7 @@ const APP = (function () {
         renderApplyFilters, exportData, clearAllData,
         toggleProfileEdit, toggleDietEdit, newVisit, saveControl, delControl,
         addMedication, delMedication, renderHome, renderVisits, renderMedications,
-        focusField
+        quickAdd, focusField
     };
 })();
 
