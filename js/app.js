@@ -293,6 +293,7 @@ const APP = (function () {
 
         if (VALIDATORS.hasErrors(errors)) { toast('Corrige los campos marcados.', 'error'); return; }
 
+        try {
         const db = await DB.get();
         // Conservar foto anterior
         data.photo = db.profile.photo || '';
@@ -311,10 +312,14 @@ const APP = (function () {
         await DB.saveWeights(db.weights);
         renderHome();
         toast('Perfil guardado correctamente.');
-    }
+    } catch (e) { console.error(e); toast('Error al guardar perfil: ' + e.message, 'error'); }
 
     // ---------- INICIO / HOME DASHBOARD ----------
     function renderHome() {
+        // Estado de carga inmediato (antes de DB.get)
+        if ($('homeName')) $('homeName').textContent = 'Cargando…';
+        if ($('homeAge')) $('homeAge').textContent = '…';
+        if ($('homeWeight')) $('homeWeight').textContent = '…';
         DB.get().then(db => {
             const p = db.profile || {};
             // Brand + pet overview
@@ -552,6 +557,7 @@ const APP = (function () {
             clinic: val('cClinic'), weight: val('cWeight'), cost: val('cCost'), result: val('cResult')
         };
         if (!data.date || !data.type) { toast('Completa fecha y tipo de control.', 'error'); return; }
+        try {
         const db = await DB.get();
         db.controls.push({ id: DB.genId(), vetName: data.clinic, ...data });
         await DB.saveControls(db.controls);
@@ -567,6 +573,7 @@ const APP = (function () {
         renderVisits();
         renderHome();
         toast('Visita registrada.');
+        } catch (e) { console.error(e); toast('Error al guardar visita: ' + e.message, 'error'); }
     }
 
     function renderVisits() {
@@ -627,6 +634,7 @@ const APP = (function () {
     async function addMedication() {
         const name = val('medName'), dose = val('medDose'), inst = val('medInst');
         if (!name) { toast('Indica el nombre del medicamento.', 'error'); return; }
+        try {
         const db = await DB.get();
         if (!db.medications) db.medications = [];
         db.medications.push({ id: DB.genId(), name, dose, inst });
@@ -634,6 +642,7 @@ const APP = (function () {
         clearForm(['medName', 'medDose', 'medInst']);
         renderMedications();
         toast('Medicamento añadido.');
+        } catch (e) { console.error(e); toast('Error al guardar medicamento: ' + e.message, 'error'); }
     }
 
     async function delMedication(id) {
@@ -654,12 +663,14 @@ const APP = (function () {
         const errors = VALIDATORS.validateVaccine(data);
         if (VALIDATORS.hasErrors(errors)) { toast('Corrige los campos.', 'error'); return; }
 
+        try {
         const db = await DB.get();
         db.vaccines.push({ id: DB.genId(), ...data });
         await DB.saveVaccines(db.vaccines);
         clearForm(['vaxType', 'vaxDate', 'vaxLot', 'vaxLab', 'vaxVet', 'vaxNext', 'vaxCost', 'vaxNotes']);
         renderAllVaccines();
         toast('Vacuna registrada.');
+        } catch (e) { console.error(e); toast('Error al guardar vacuna: ' + e.message, 'error'); }
     }
 
     function renderCalendar() {
@@ -742,12 +753,14 @@ const APP = (function () {
         const errors = VALIDATORS.validateDeworming(data);
         if (VALIDATORS.hasErrors(errors)) { toast('Corrige los campos.', 'error'); return; }
 
+        try {
         const db = await DB.get();
         db.deworming.push({ id: DB.genId(), ...data });
         await DB.saveDeworming(db.deworming);
         clearForm(['despType', 'despDate', 'despProduct', 'despDose', 'despWeight', 'despNext', 'despVet', 'despCost', 'despNotes']);
         renderAllDeworming();
         toast('Registro guardado.');
+        } catch (e) { console.error(e); toast('Error al guardar desparasitación: ' + e.message, 'error'); }
     }
 
     async function renderAllDeworming() {
@@ -785,6 +798,7 @@ const APP = (function () {
         const errors = VALIDATORS.validateFood(data);
         if (VALIDATORS.hasErrors(errors)) { toast('Corrige los campos.', 'error'); return; }
 
+        try {
         const db = await DB.get();
         db.food = data;
         await DB.saveFoodData(db.food);
@@ -792,6 +806,7 @@ const APP = (function () {
         renderDietStats();
         renderHome();
         toast('Alimentación guardada.');
+        } catch (e) { console.error(e); toast('Error al guardar alimentación: ' + e.message, 'error'); }
     }
 
     function collectRestrictions() {
@@ -823,6 +838,7 @@ const APP = (function () {
         if (!date) { toast('Indica la fecha.', 'error'); focusField('rwDate'); return; }
         if (!w || w <= 0) { toast('Indica un peso válido (kg).', 'error'); focusField('rwWeight'); return; }
 
+        try {
         const db = await DB.get();
         if (!db.weights) db.weights = [];
         // Evitar duplicado exacto (misma fecha + mismo peso)
@@ -844,6 +860,7 @@ const APP = (function () {
         renderWeightChart();
         renderHome();
         toast('Peso registrado.');
+        } catch (e) { console.error(e); toast('Error al guardar peso: ' + e.message, 'error'); }
     }
 
     async function delWeight(id) {
@@ -936,6 +953,7 @@ const APP = (function () {
         const data = { date: val('foodChangeDate'), desc: val('foodChangeDesc'), reason: val('foodChangeReason') };
         const errors = VALIDATORS.validateFoodChange(data);
         if (VALIDATORS.hasErrors(errors)) { toast('Completa fecha y descripción.', 'error'); return; }
+        try {
         const db = await DB.get();
         if (!db.foodChanges) db.foodChanges = [];
         db.foodChanges.push({ id: DB.genId(), ...data });
@@ -943,6 +961,7 @@ const APP = (function () {
         clearForm(['foodChangeDate', 'foodChangeDesc', 'foodChangeReason']);
         renderFoodHistory();
         toast('Cambio registrado.');
+        } catch (e) { console.error(e); toast('Error al guardar cambio: ' + e.message, 'error'); }
     }
 
     async function renderFoodHistory() {
@@ -976,12 +995,14 @@ const APP = (function () {
         const data = { date: val('noteDate'), title: val('noteTitle'), desc: val('noteDesc') };
         const errors = VALIDATORS.validateNote(data);
         if (VALIDATORS.hasErrors(errors)) { toast('Completa fecha y título.', 'error'); return; }
+        try {
         const db = await DB.get();
         db.notes.push({ id: DB.genId(), ...data });
         await DB.saveNotes(db.notes);
         clearForm(['noteDate', 'noteTitle', 'noteDesc']);
         renderHistory();
         toast('Nota guardada.');
+        } catch (e) { console.error(e); toast('Error al guardar nota: ' + e.message, 'error'); }
     }
 
     async function renderHistory() {

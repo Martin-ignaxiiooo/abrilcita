@@ -87,7 +87,9 @@ const DB = (function () {
     function appToRow(map, obj) {
         const out = {};
         for (const [appKey, col] of Object.entries(map)) {
-            if (obj[appKey] !== undefined && obj[appKey] !== null) out[col] = obj[appKey];
+            if (obj[appKey] !== undefined && obj[appKey] !== null) {
+                out[col] = obj[appKey] === '' ? null : obj[appKey];
+            }
         }
         return out;
     }
