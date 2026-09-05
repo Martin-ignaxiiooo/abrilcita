@@ -167,9 +167,9 @@ const DB = (function () {
         }
 
         // Filas a upsert (están en local → insert si no existe, update si existe)
-        const toUpsert = items.map(item => appToRow(map, item));
+        const toUpsert = items.map(item => ({ id: item.id, ...appToRow(map, item) }));
         for (let i = 0; i < toUpsert.length; i += 100) {
-            checkError(await supabaseClient.from(table).upsert(toUpsert.slice(i, i + 100)), 'upsert ' + key);
+            checkError(await supabaseClient.from(table).upsert(toUpsert.slice(i, i + 100), { onConflict: 'id' }), 'upsert ' + key);
         }
     }
 
