@@ -69,22 +69,22 @@ const APP = (function () {
     }
 
     // Estado de guardado en un botón (spinner + deshabilitado)
-    function using(btn) {
+    function using(btn, msg) {
         if (!btn) return { end: function () {} };
         const orig = btn.innerHTML;
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner"></span> Guardando…';
+        btn.innerHTML = '<span class="spinner"></span> ' + (msg || 'Guardando…');
         return {
             end() { btn.disabled = false; btn.innerHTML = orig; }
         };
     }
 
     // Protege un handler de doble-click: deshabilita el botón durante la ejecución
-    function guard(fn, btn) {
+    function guard(fn, btn, msg) {
         return async function () {
             if (!btn || btn.disabled) return;
-            const state = using(btn);
-            try { await fn(); } catch (e) { console.error(e); toast('Error al guardar.', 'error'); }
+            const state = using(btn, msg);
+            try { await fn(); } catch (e) { console.error(e); toast('Error al guardar: ' + e.message, 'error'); }
             finally { state.end(); }
         };
     }
@@ -199,15 +199,15 @@ const APP = (function () {
                 saveNote: () => guard(saveNote, btn)(),
                 exportData: () => exportData(),
                 clearAllData: () => clearAllData(),
-                delControl: () => delControl(id),
-                delMedication: () => delMedication(id),
-                delVaccine: () => delVaccine(id),
-                delDeworming: () => delDeworming(id),
-                delWeight: () => delWeight(id),
-                delFoodChange: () => delFoodChange(id),
+                delControl: () => { if (!confirm('¿Eliminar esta visita?')) return; guard(delControl, btn, 'Borrando…')(id); },
+                delMedication: () => guard(delMedication, btn, 'Borrando…')(id),
+                delVaccine: () => { if (!confirm('¿Eliminar esta vacuna?')) return; guard(delVaccine, btn, 'Borrando…')(id); },
+                delDeworming: () => { if (!confirm('¿Eliminar este registro?')) return; guard(delDeworming, btn, 'Borrando…')(id); },
+                delWeight: () => { if (!confirm('¿Eliminar este registro de peso?')) return; guard(delWeight, btn, 'Borrando…')(id); },
+                delFoodChange: () => { if (!confirm('¿Eliminar este cambio?')) return; guard(delFoodChange, btn, 'Borrando…')(id); },
                 delHistoryItem: () => {
                     const type = btn.dataset.type;
-                    if (type) delHistoryItem(type, id);
+                    if (type && confirm('¿Eliminar?')) guard(delHistoryItem, btn, 'Borrando…')(type, id);
                 },
                 focusField: () => {
                     const target = btn.dataset.target;
@@ -601,13 +601,14 @@ const APP = (function () {
     }
 
     async function delControl(id) {
-        if (!confirm('¿Eliminar esta visita?')) return;
+        try {
         const db = await DB.get();
         db.controls = db.controls.filter(c => c.id !== id);
         await DB.saveControls(db.controls);
         renderVisits();
         renderHome();
         toast('Visita eliminada.');
+        } catch (e) { console.error(e); toast('Error al eliminar: ' + e.message, 'error'); }
     }
 
     // ---------- MEDICACIÓN ----------
@@ -647,11 +648,13 @@ const APP = (function () {
     }
 
     async function delMedication(id) {
+        try {
         const db = await DB.get();
         db.medications = (db.medications || []).filter(m => m.id !== id);
         await DB.saveMedications(db.medications);
         renderMedications();
         toast('Medicamento eliminado.');
+        } catch (e) { console.error(e); toast('Error al eliminar: ' + e.message, 'error'); }
     }
 
     // ============ VACUNAS ============
@@ -713,12 +716,13 @@ const APP = (function () {
     }
 
     async function delVaccine(id) {
-        if (!confirm('¿Eliminar esta vacuna?')) return;
+        try {
         const db = await DB.get();
         db.vaccines = db.vaccines.filter(v => v.id !== id);
         await DB.saveVaccines(db.vaccines);
         renderAllVaccines();
         toast('Vacuna eliminada.');
+        } catch (e) { console.error(e); toast('Error al eliminar: ' + e.message, 'error'); }
     }
 
     async function renderVaccineCard(db) {
@@ -779,12 +783,13 @@ const APP = (function () {
     }
 
     async function delDeworming(id) {
-        if (!confirm('¿Eliminar este registro?')) return;
+        try {
         const db = await DB.get();
         db.deworming = db.deworming.filter(d => d.id !== id);
         await DB.saveDeworming(db.deworming);
         renderAllDeworming();
         toast('Registro eliminado.');
+        } catch (e) { console.error(e); toast('Error al eliminar: ' + e.message, 'error'); }
     }
 
     // ============ ALIMENTACION ============
@@ -865,7 +870,7 @@ const APP = (function () {
     }
 
     async function delWeight(id) {
-        if (!confirm('¿Eliminar este registro de peso?')) return;
+        try {
         const db = await DB.get();
         db.weights = (db.weights || []).filter(x => x.id !== id);
         await DB.saveWeights(db.weights);
@@ -873,6 +878,7 @@ const APP = (function () {
         renderWeightChart();
         renderHome();
         toast('Registro de peso eliminado.');
+        } catch (e) { console.error(e); toast('Error al eliminar: ' + e.message, 'error'); }
     }
 
     function renderWeightList() {
@@ -983,12 +989,13 @@ const APP = (function () {
     }
 
     async function delFoodChange(id) {
-        if (!confirm('¿Eliminar este cambio?')) return;
+        try {
         const db = await DB.get();
         db.foodChanges = (db.foodChanges || []).filter(c => c.id !== id);
         await DB.saveFoodChanges(db.foodChanges);
         renderFoodHistory();
         toast('Cambio eliminado.');
+        } catch (e) { console.error(e); toast('Error al eliminar: ' + e.message, 'error'); }
     }
 
     // ============ HISTORIAL ============
@@ -1054,7 +1061,7 @@ const APP = (function () {
     }
 
     async function delHistoryItem(type, id) {
-        if (!confirm('¿Eliminar?')) return;
+        try {
         const db = await DB.get();
         if (type === 'vax') { db.vaccines = db.vaccines.filter(v => v.id !== id); await DB.saveVaccines(db.vaccines); }
         if (type === 'desp') { db.deworming = db.deworming.filter(d => d.id !== id); await DB.saveDeworming(db.deworming); }
@@ -1063,6 +1070,7 @@ const APP = (function () {
         if (type === 'fc') { db.foodChanges = (db.foodChanges || []).filter(f => f.id !== id); await DB.saveFoodChanges(db.foodChanges); }
         renderHistory();
         toast('Eliminado.');
+        } catch (e) { console.error(e); toast('Error al eliminar: ' + e.message, 'error'); }
     }
 
     function renderApplyFilters() { renderHistory(); toast('Filtros aplicados.'); }
