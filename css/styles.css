@@ -438,6 +438,19 @@ a:hover { text-decoration: underline; }
 .restriction-tags .restriction-empty { font-size: var(--fs-sm); color: var(--gray-500); }
 
 /* ============================================================
+   LISTA DE PESO (Registro retroactivo)
+   ============================================================ */
+.weight-list { display: flex; flex-direction: column; gap: var(--sp-1); }
+.weight-item {
+    display: flex; align-items: center; gap: var(--sp-3);
+    padding: var(--sp-2) var(--sp-3);
+    background: var(--gray-50); border: 1px solid var(--gray-100);
+    border-radius: var(--r-md); animation: rowIn 0.3s ease both;
+}
+.weight-item .wi-date { font-size: var(--fs-sm); color: var(--gray-500); flex: 1; }
+.weight-item .wi-value { font-size: var(--fs-body); font-weight: 700; color: var(--gray-800); }
+
+/* ============================================================
    GRÁFICO (Chart.js)
    ============================================================ */
 .chart-box { position: relative; height: 240px; }

@@ -187,7 +187,7 @@ const APP = (function () {
             if (page === 'inicio') { renderHome(); renderDietStats(); }
             if (page === 'vacunas') renderAllVaccines();
             if (page === 'desparasitacion') renderAllDeworming();
-            if (page === 'alimentacion') { loadFoodForm(); renderDietStats(); renderWeightChart(); renderMealSchedule(); renderFoodHistory(); }
+            if (page === 'alimentacion') { loadFoodForm(); renderDietStats(); renderWeightChart(); renderWeightList(); renderMealSchedule(); renderFoodHistory(); }
             if (page === 'controles') { renderVisits(); renderMedications(); }
             if (page === 'historial') renderHistory();
             refreshIcons();
@@ -366,7 +366,7 @@ const APP = (function () {
     let _homeWeightChart = null;
     function renderHomeWeightChart(db) {
         const el = $('homeWeightChart');
-        const weights = db.weights || [];
+        const weights = (db.weights || []).slice().sort((x, y) => String(x.d).localeCompare(y.d));
         const listed = weights.slice(-12);
         const cur = (db.profile && db.profile.weight) ? parseFloat(db.profile.weight) : (listed.length ? parseFloat(listed[listed.length-1].w) : null);
         if ($('homeWeightCard')) $('homeWeightCard').textContent = cur ? cur + ' kg' : '—';
@@ -745,12 +745,66 @@ const APP = (function () {
         });
     }
 
+    // ============ PESO RETROACTIVO ============
+    async function saveWeight() {
+        const date = val('rwDate');
+        const w = parseFloat(val('rwWeight'));
+        if (!date) { toast('Indica la fecha.', 'error'); focusField('rwDate'); return; }
+        if (!w || w <= 0) { toast('Indica un peso válido (kg).', 'error'); focusField('rwWeight'); return; }
+
+        const db = await DB.get();
+        if (!db.weights) db.weights = [];
+        // Evitar duplicado exacto (misma fecha + mismo peso)
+        const dup = db.weights.find(x => x.d === date && parseFloat(x.w) === w);
+        if (dup) { toast('Ese peso ya está registrado para esa fecha.', 'error'); return; }
+
+        db.weights.push({ id: DB.genId(), d: date, w: String(w) });
+        await DB.save(db);
+
+        // Actualizar peso actual del perfil si la fecha es la más reciente
+        const sorted = db.weights.slice().sort((a, b) => String(b.d).localeCompare(String(a.d)));
+        if (!db.profile) db.profile = {};
+        if (!db.profile.weight && sorted[0] && sorted[0].id === db.weights[db.weights.length - 1].id) {
+            db.profile.weight = String(w);
+            await DB.save(db);
+        }
+
+        renderWeightList();
+        renderWeightChart();
+        renderHome();
+        toast('Peso registrado.');
+    }
+
+    async function delWeight(id) {
+        if (!confirm('¿Eliminar este registro de peso?')) return;
+        const db = await DB.get();
+        db.weights = (db.weights || []).filter(x => x.id !== id);
+        await DB.save(db);
+        renderWeightList();
+        renderWeightChart();
+        renderHome();
+        toast('Registro de peso eliminado.');
+    }
+
+    function renderWeightList() {
+        const el = $('weightList');
+        if (!el) return;
+        DB.get().then(db => {
+            const list = (db.weights || []).slice().sort((a, b) => String(b.d).localeCompare(String(a.d)));
+            if (!list.length) { el.innerHTML = ''; return; }
+            el.innerHTML = '<div class="weight-list">' + list.slice(0, 10).map(x =>
+                '<div class="weight-item"><span class="wi-date">' + fmtDate(x.d) + '</span><span class="wi-value">' + parseFloat(x.w) + ' kg</span><button class="btn btn-danger btn-sm" onclick="APP.delWeight(\'' + x.id + '\')">✕</button></div>'
+            ).join('') + '</div>';
+            refreshIcons();
+        });
+    }
+
     let _weightChart = null;
     async function renderWeightChart() {
         const db = await DB.get();
         const el = $('weightChart');
         if (!el) return;
-        const weights = db.weights || [];
+        const weights = (db.weights || []).slice().sort((x, y) => String(x.d).localeCompare(y.d));
         const listed = weights.slice(-12);
         const cur = (db.profile && db.profile.weight) ? parseFloat(db.profile.weight) : (listed.length ? parseFloat(listed[listed.length-1].w) : null);
         if ($('chartWeight')) $('chartWeight').textContent = cur ? cur + ' kg' : '—';
@@ -962,7 +1016,7 @@ const APP = (function () {
         renderApplyFilters, exportData, clearAllData,
         toggleProfileEdit, toggleDietEdit, newVisit, saveControl, delControl,
         addMedication, delMedication, renderHome, renderVisits, renderMedications,
-        quickAdd, focusField
+        quickAdd, focusField, saveWeight, delWeight
     };
 })();
 
