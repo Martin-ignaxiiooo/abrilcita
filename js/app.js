@@ -313,6 +313,7 @@ const APP = (function () {
         renderHome();
         toast('Perfil guardado correctamente.');
     } catch (e) { console.error(e); toast('Error al guardar perfil: ' + e.message, 'error'); }
+    }
 
     // ---------- INICIO / HOME DASHBOARD ----------
     function renderHome() {
