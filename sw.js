@@ -1,4 +1,4 @@
-const CACHE = 'abrilcita-v1';
+const CACHE = 'abrilcita-v2';
 const SHELL = [
   './',
   './index.html',
