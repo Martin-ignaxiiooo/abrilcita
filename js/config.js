@@ -24,6 +24,10 @@ const APP_CONFIG = {
     supabase: {
         url: 'https://iwmfrkgrwircumwmaxve.supabase.co',
         anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3bWZya2dyd2lyY3Vtd21heHZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzNTcyMjUsImV4cCI6MjEwMzkzMzIyNX0.NFYBJyVWz2MCoztLKMaLMFM7ILkL5NTTZYpnWny2fko',
+        // ⚠️ DECISIÓN RLS: No se implementan políticas de Row-Level Security.
+        // Motivo: app personal de un solo usuario/gato. La anon key es pública
+        // por diseño de Supabase. Si se comparte el link ampliamente o se
+        // agrega multi-usuario, implementar Supabase Auth + RLS por usuario.
         // Nombre de las tablas en Supabase (crear via script SQL)
         tables: {
             profile: 'profile',
