@@ -26,6 +26,7 @@ const DB = (function () {
     let supabaseClient = null;
 
     async function initSupabase() {
+        if (supabaseClient) return supabaseClient;   // reutilizar cliente (evita múltiples GoTrueClient)
         if (!window.supabase) {
             throw new Error('Supabase client no cargado. Agrega el script de supabase-js en index.html');
         }
@@ -35,6 +36,16 @@ const DB = (function () {
         }
         supabaseClient = window.supabase.createClient(cfg.url, cfg.anonKey);
         return supabaseClient;
+    }
+
+    // Lanza error si Supabase devuelve .error (evita fallos silenciosos)
+    function checkError(res, op) {
+        if (res && res.error) {
+            const msg = (res.error.message || res.error.code || 'error desconocido');
+            console.error('[Supabase] ' + op + ': ' + msg);
+            throw new Error('Supabase: ' + op + ' falló (' + msg + ')');
+        }
+        return res;
     }
 
     // ---------- MÉTODOS ----------
@@ -108,7 +119,7 @@ const DB = (function () {
         const doc = defaultDoc();
 
         // profile (una fila)
-        const { data: profileRows } = await supabaseClient.from(t.profile).select('*').limit(1);
+        const { data: profileRows } = checkError(await supabaseClient.from(t.profile).select('*').limit(1), 'select profile');
         // Garantizar solo una fila (usa la primera)
         doc.profile = profileRows && profileRows[0] ? rowToApp(FIELD_MAPS.profile, profileRows[0]) : {};
 
@@ -123,12 +134,12 @@ const DB = (function () {
             [t.medications, 'medications', FIELD_MAPS.medications]
         ];
         for (const [table, key, map] of tablesMap) {
-            const { data } = await supabaseClient.from(table).select('*');
+            const { data } = checkError(await supabaseClient.from(table).select('*'), 'select ' + key);
             doc[key] = (data || []).map(r => rowToApp(map, r));
         }
 
         // food (una fila)
-        const { data: foodRows } = await supabaseClient.from(t.food).select('*').limit(1);
+        const { data: foodRows } = checkError(await supabaseClient.from(t.food).select('*').limit(1), 'select food');
         doc.food = foodRows && foodRows[0] ? rowToApp(FIELD_MAPS.food, foodRows[0]) : {};
 
         return doc;
@@ -142,22 +153,22 @@ const DB = (function () {
         const profileRow = appToRow(FIELD_MAPS.profile, doc.profile || {});
         if (Object.keys(profileRow).length) {
             // Si no hay id, inserta; si hay, actualiza
-            const { data: existing } = await supabaseClient.from(t.profile).select('id').limit(1);
+            const { data: existing } = checkError(await supabaseClient.from(t.profile).select('id').limit(1), 'select profile id');
             if (existing && existing[0]) {
-                await supabaseClient.from(t.profile).update(profileRow).eq('id', existing[0].id);
+                checkError(await supabaseClient.from(t.profile).update(profileRow).eq('id', existing[0].id), 'update profile');
             } else {
-                await supabaseClient.from(t.profile).insert(profileRow);
+                checkError(await supabaseClient.from(t.profile).insert(profileRow), 'insert profile');
             }
         }
 
         // food: upsert de una fila
         const foodRow = appToRow(FIELD_MAPS.food, doc.food || {});
         if (Object.keys(foodRow).length) {
-            const { data: existing } = await supabaseClient.from(t.food).select('id').limit(1);
+            const { data: existing } = checkError(await supabaseClient.from(t.food).select('id').limit(1), 'select food id');
             if (existing && existing[0]) {
-                await supabaseClient.from(t.food).update(foodRow).eq('id', existing[0].id);
+                checkError(await supabaseClient.from(t.food).update(foodRow).eq('id', existing[0].id), 'update food');
             } else {
-                await supabaseClient.from(t.food).insert(foodRow);
+                checkError(await supabaseClient.from(t.food).insert(foodRow), 'insert food');
             }
         }
 
@@ -173,12 +184,12 @@ const DB = (function () {
         ];
         for (const [table, key, map] of tablesMap) {
             // Borrar todas las filas de la tabla
-            const { data: all } = await supabaseClient.from(table).select('id');
+            const { data: all } = checkError(await supabaseClient.from(table).select('id'), 'select ' + key + ' ids');
             if (all && all.length) {
                 const ids = all.map(r => r.id);
                 // Borrar en lotes de 100 (límite de Supabase)
                 for (let i = 0; i < ids.length; i += 100) {
-                    await supabaseClient.from(table).delete().in('id', ids.slice(i, i + 100));
+                    checkError(await supabaseClient.from(table).delete().in('id', ids.slice(i, i + 100)), 'delete ' + key);
                 }
             }
             // Insertar las actuales
@@ -186,7 +197,7 @@ const DB = (function () {
                 const rows = doc[key].map(item => appToRow(map, item));
                 // Insertar en lotes de 100
                 for (let i = 0; i < rows.length; i += 100) {
-                    await supabaseClient.from(table).insert(rows.slice(i, i + 100));
+                    checkError(await supabaseClient.from(table).insert(rows.slice(i, i + 100)), 'insert ' + key);
                 }
             }
         }
