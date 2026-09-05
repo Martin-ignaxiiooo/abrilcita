@@ -79,6 +79,16 @@ const APP = (function () {
         };
     }
 
+    // Protege un handler de doble-click: deshabilita el botón durante la ejecución
+    function guard(fn, btn) {
+        return async function () {
+            if (!btn || btn.disabled) return;
+            const state = using(btn);
+            try { await fn(); } catch (e) { console.error(e); toast('Error al guardar.', 'error'); }
+            finally { state.end(); }
+        };
+    }
+
     // Sincroniza el estado del elemento con su error en vivo
     function setFieldError(input, message) {
         if (!input) return;
@@ -221,7 +231,7 @@ const APP = (function () {
         reader.onload = async function (ev) {
             const db = await DB.get();
             db.profile.photo = ev.target.result;
-            await DB.save(db);
+            await DB.saveProfile(db.profile);
             applyPhotoUI(ev.target.result, 'navAvatar');
             toast('Foto actualizada.');
         };
@@ -254,7 +264,8 @@ const APP = (function () {
                 db.weights.push({ id: DB.genId(), d: today, w: data.weight });
             }
         }
-        await DB.save(db);
+        await DB.saveProfile(db.profile);
+        await DB.saveWeights(db.weights);
         renderHome();
         toast('Perfil guardado correctamente.');
     }
@@ -420,10 +431,22 @@ const APP = (function () {
         const card = $('profileEditCard');
         if (!card) return;
         const show = card.style.display === 'none';
-        card.style.display = show ? 'block' : 'none';
-        if (show) renderHome();
+        if (!show) {
+            // Al cerrar: confirmar si hay cambios sin guardar
+            DB.get().then(db => {
+                const p = db.profile || {};
+                const current = { name: val('pName'), birth: val('pBirth'), weight: val('pWeight') };
+                const dirty = current.name !== (p.name || '') || current.birth !== (p.birth || '') || current.weight !== (p.weight || '');
+                if (dirty && !confirm('Tienes cambios sin guardar. ¿Cerrar sin guardar?')) return;
+                card.style.display = 'none';
+                refreshIcons();
+            });
+            return;
+        }
+        card.style.display = 'block';
+        renderHome();
         refreshIcons();
-        if (show) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     // ---------- ALIMENTACIÓN: minitarjetas + alertas ----------
@@ -453,8 +476,13 @@ const APP = (function () {
         const card = $('dietEditCard');
         if (!card) return;
         const show = card.style.display === 'none';
-        card.style.display = show ? 'block' : 'none';
-        if (show) loadFoodForm();
+        if (!show) {
+            card.style.display = 'none';
+            refreshIcons();
+            return;
+        }
+        card.style.display = 'block';
+        loadFoodForm();
         refreshIcons();
     }
 
@@ -483,7 +511,7 @@ const APP = (function () {
         if (!data.date || !data.type) { toast('Completa fecha y tipo de control.', 'error'); return; }
         const db = await DB.get();
         db.controls.push({ id: DB.genId(), vetName: data.clinic, ...data });
-        await DB.save(db);
+        await DB.saveControls(db.controls);
         clearForm(['cDate', 'cType', 'cReason', 'cClinic', 'cWeight', 'cCost', 'cResult']);
         document.getElementById('visitForm').style.display = 'none';
         // registrar peso del control
@@ -491,7 +519,7 @@ const APP = (function () {
             db.weights = db.weights || [];
             const today = new Date().toISOString().slice(0, 10);
             db.weights.push({ id: DB.genId(), d: data.date || today, w: data.weight });
-            await DB.save(db);
+            await DB.saveWeights(db.weights);
         }
         renderVisits();
         renderHome();
@@ -525,7 +553,7 @@ const APP = (function () {
         if (!confirm('¿Eliminar esta visita?')) return;
         const db = await DB.get();
         db.controls = db.controls.filter(c => c.id !== id);
-        await DB.save(db);
+        await DB.saveControls(db.controls);
         renderVisits();
         renderHome();
         toast('Visita eliminada.');
@@ -559,7 +587,7 @@ const APP = (function () {
         const db = await DB.get();
         if (!db.medications) db.medications = [];
         db.medications.push({ id: DB.genId(), name, dose, inst });
-        await DB.save(db);
+        await DB.saveMedications(db.medications);
         clearForm(['medName', 'medDose', 'medInst']);
         renderMedications();
         toast('Medicamento añadido.');
@@ -568,7 +596,7 @@ const APP = (function () {
     async function delMedication(id) {
         const db = await DB.get();
         db.medications = (db.medications || []).filter(m => m.id !== id);
-        await DB.save(db);
+        await DB.saveMedications(db.medications);
         renderMedications();
         toast('Medicamento eliminado.');
     }
@@ -585,7 +613,7 @@ const APP = (function () {
 
         const db = await DB.get();
         db.vaccines.push({ id: DB.genId(), ...data });
-        await DB.save(db);
+        await DB.saveVaccines(db.vaccines);
         clearForm(['vaxType', 'vaxDate', 'vaxLot', 'vaxLab', 'vaxVet', 'vaxNext', 'vaxCost', 'vaxNotes']);
         renderAllVaccines();
         toast('Vacuna registrada.');
@@ -633,7 +661,7 @@ const APP = (function () {
         if (!confirm('¿Eliminar esta vacuna?')) return;
         const db = await DB.get();
         db.vaccines = db.vaccines.filter(v => v.id !== id);
-        await DB.save(db);
+        await DB.saveVaccines(db.vaccines);
         renderAllVaccines();
         toast('Vacuna eliminada.');
     }
@@ -673,7 +701,7 @@ const APP = (function () {
 
         const db = await DB.get();
         db.deworming.push({ id: DB.genId(), ...data });
-        await DB.save(db);
+        await DB.saveDeworming(db.deworming);
         clearForm(['despType', 'despDate', 'despProduct', 'despDose', 'despWeight', 'despNext', 'despVet', 'despCost', 'despNotes']);
         renderAllDeworming();
         toast('Registro guardado.');
@@ -697,7 +725,7 @@ const APP = (function () {
         if (!confirm('¿Eliminar este registro?')) return;
         const db = await DB.get();
         db.deworming = db.deworming.filter(d => d.id !== id);
-        await DB.save(db);
+        await DB.saveDeworming(db.deworming);
         renderAllDeworming();
         toast('Registro eliminado.');
     }
@@ -716,7 +744,7 @@ const APP = (function () {
 
         const db = await DB.get();
         db.food = data;
-        await DB.save(db);
+        await DB.saveFoodData(db.food);
         renderMealSchedule();
         renderDietStats();
         renderHome();
@@ -759,14 +787,14 @@ const APP = (function () {
         if (dup) { toast('Ese peso ya está registrado para esa fecha.', 'error'); return; }
 
         db.weights.push({ id: DB.genId(), d: date, w: String(w) });
-        await DB.save(db);
+        await DB.saveWeights(db.weights);
 
         // Actualizar peso actual del perfil si la fecha es la más reciente
         const sorted = db.weights.slice().sort((a, b) => String(b.d).localeCompare(String(a.d)));
         if (!db.profile) db.profile = {};
         if (!db.profile.weight && sorted[0] && sorted[0].id === db.weights[db.weights.length - 1].id) {
             db.profile.weight = String(w);
-            await DB.save(db);
+            await DB.saveProfile(db.profile);
         }
 
         renderWeightList();
@@ -779,7 +807,7 @@ const APP = (function () {
         if (!confirm('¿Eliminar este registro de peso?')) return;
         const db = await DB.get();
         db.weights = (db.weights || []).filter(x => x.id !== id);
-        await DB.save(db);
+        await DB.saveWeights(db.weights);
         renderWeightList();
         renderWeightChart();
         renderHome();
@@ -868,7 +896,7 @@ const APP = (function () {
         const db = await DB.get();
         if (!db.foodChanges) db.foodChanges = [];
         db.foodChanges.push({ id: DB.genId(), ...data });
-        await DB.save(db);
+        await DB.saveFoodChanges(db.foodChanges);
         clearForm(['foodChangeDate', 'foodChangeDesc', 'foodChangeReason']);
         renderFoodHistory();
         toast('Cambio registrado.');
@@ -895,7 +923,7 @@ const APP = (function () {
         if (!confirm('¿Eliminar este cambio?')) return;
         const db = await DB.get();
         db.foodChanges = (db.foodChanges || []).filter(c => c.id !== id);
-        await DB.save(db);
+        await DB.saveFoodChanges(db.foodChanges);
         renderFoodHistory();
         toast('Cambio eliminado.');
     }
@@ -907,7 +935,7 @@ const APP = (function () {
         if (VALIDATORS.hasErrors(errors)) { toast('Completa fecha y título.', 'error'); return; }
         const db = await DB.get();
         db.notes.push({ id: DB.genId(), ...data });
-        await DB.save(db);
+        await DB.saveNotes(db.notes);
         clearForm(['noteDate', 'noteTitle', 'noteDesc']);
         renderHistory();
         toast('Nota guardada.');
@@ -963,12 +991,11 @@ const APP = (function () {
     async function delHistoryItem(type, id) {
         if (!confirm('¿Eliminar?')) return;
         const db = await DB.get();
-        if (type === 'vax') db.vaccines = db.vaccines.filter(v => v.id !== id);
-        if (type === 'desp') db.deworming = db.deworming.filter(d => d.id !== id);
-        if (type === 'ctrl') db.controls = db.controls.filter(c => c.id !== id);
-        if (type === 'note') db.notes = db.notes.filter(n => n.id !== id);
-        if (type === 'fc') db.foodChanges = (db.foodChanges || []).filter(f => f.id !== id);
-        await DB.save(db);
+        if (type === 'vax') { db.vaccines = db.vaccines.filter(v => v.id !== id); await DB.saveVaccines(db.vaccines); }
+        if (type === 'desp') { db.deworming = db.deworming.filter(d => d.id !== id); await DB.saveDeworming(db.deworming); }
+        if (type === 'ctrl') { db.controls = db.controls.filter(c => c.id !== id); await DB.saveControls(db.controls); }
+        if (type === 'note') { db.notes = db.notes.filter(n => n.id !== id); await DB.saveNotes(db.notes); }
+        if (type === 'fc') { db.foodChanges = (db.foodChanges || []).filter(f => f.id !== id); await DB.saveFoodChanges(db.foodChanges); }
         renderHistory();
         toast('Eliminado.');
     }
@@ -1016,7 +1043,7 @@ const APP = (function () {
         renderApplyFilters, exportData, clearAllData,
         toggleProfileEdit, toggleDietEdit, newVisit, saveControl, delControl,
         addMedication, delMedication, renderHome, renderVisits, renderMedications,
-        quickAdd, focusField, saveWeight, delWeight
+        quickAdd, focusField, saveWeight, delWeight, guard
     };
 })();
 

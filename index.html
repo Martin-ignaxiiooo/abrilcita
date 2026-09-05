@@ -203,7 +203,7 @@
                 <div class="form-group"><label for="pVetPhone">Teléfono vet</label><div class="input-wrap"><i data-lucide="phone"></i><input type="tel" id="pVetPhone" placeholder="+56 9 XXXX XXXX"></div></div>
             </div>
             <div class="form-group"><label for="pRut">RUT / Identificación</label><div class="input-wrap"><i data-lucide="id-card"></i><input type="text" id="pRut" placeholder="12.345.678-K"></div></div>
-            <button class="btn btn-primary" onclick="APP.saveProfile()"><i data-lucide="save"></i> Guardar Perfil</button>
+            <button class="btn btn-primary" onclick="APP.guard(APP.saveProfile, this)()"><i data-lucide="save"></i> Guardar Perfil</button>
             <div id="profileAlert"></div>
         </div>
     </div>
@@ -293,7 +293,7 @@
                 <div class="form-group"><label for="vaxCost">Costo (CLP)</label><div class="input-wrap"><i data-lucide="banknote"></i><input type="number" id="vaxCost" placeholder="25000"></div></div>
                 <div class="form-group"><label for="vaxNotes">Observaciones</label><div class="input-wrap"><i data-lucide="message-square"></i><input type="text" id="vaxNotes" placeholder="Reacciones, etc."></div></div>
             </div>
-            <button class="btn btn-primary" onclick="APP.saveVaccine()"><i data-lucide="plus"></i> Agregar Vacuna</button>
+            <button class="btn btn-primary" onclick="APP.guard(APP.saveVaccine, this)()"><i data-lucide="plus"></i> Agregar Vacuna</button>
         </div>
     </div>
 
@@ -383,7 +383,7 @@
                 <div class="form-group"><label for="despCost">Costo (CLP)</label><div class="input-wrap"><i data-lucide="banknote"></i><input type="number" id="despCost" placeholder="15000"></div></div>
             </div>
             <div class="form-group"><label for="despNotes">Observaciones</label><textarea id="despNotes" rows="2" placeholder="Reacciones, etc."></textarea></div>
-            <button class="btn btn-primary" onclick="APP.saveDeworming()"><i data-lucide="plus"></i> Agregar Registro</button>
+            <button class="btn btn-primary" onclick="APP.guard(APP.saveDeworming, this)()"><i data-lucide="plus"></i> Agregar Registro</button>
         </div>
     </div>
 
@@ -432,7 +432,7 @@
                         <div class="form-group"><label for="rwDate">Fecha *</label><div class="input-wrap"><i data-lucide="calendar"></i><input type="date" id="rwDate"></div></div>
                         <div class="form-group"><label for="rwWeight">Peso (kg) *</label><div class="input-wrap"><i data-lucide="scale"></i><input type="number" id="rwWeight" min="0.1" step="0.1" placeholder="4.2"></div></div>
                     </div>
-                    <button id="btnSaveWeight" class="btn btn-primary" style="width:100%;margin-top:var(--sp-2)" onclick="APP.saveWeight()"><i data-lucide="plus"></i> Registrar peso</button>
+                    <button id="btnSaveWeight" class="btn btn-primary" style="width:100%;margin-top:var(--sp-2)" onclick="APP.guard(APP.saveWeight, this)()"><i data-lucide="plus"></i> Registrar peso</button>
                     <div id="weightList" style="margin-top:var(--sp-3)"></div>
                 </div>
             </div>
@@ -466,7 +466,7 @@
                     <label class="check-row"><input type="checkbox" id="drHighProt"> Alta en proteínas</label>
                 </div>
             </div>
-            <button class="btn btn-primary" onclick="APP.saveFood()"><i data-lucide="save"></i> Guardar Dieta</button>
+            <button class="btn btn-primary" onclick="APP.guard(APP.saveFood, this)()"><i data-lucide="save"></i> Guardar Dieta</button>
         </div>
 
         <div class="card">
@@ -487,7 +487,7 @@
                     <div class="form-group"><label for="foodTime3">Horario 3</label><div class="input-wrap"><i data-lucide="clock"></i><input type="time" id="foodTime3"></div></div>
                     <div class="form-group"><label for="foodTimes">Frecuencia</label><select id="foodTimes"><option value="">Seleccionar</option><option value="1">1 vez/día</option><option value="2">2 veces/día</option><option value="3">3 veces/día</option><option value="libre">Libre</option></select></div>
                 </div>
-                <button class="btn btn-ghost" onclick="APP.saveFood()"><i data-lucide="save"></i> Guardar Horarios</button>
+                <button class="btn btn-ghost" onclick="APP.guard(APP.saveFood, this)()"><i data-lucide="save"></i> Guardar Horarios</button>
             </div>
         </div>
 
@@ -498,7 +498,7 @@
                 <div class="form-group"><label for="foodChangeDesc">¿Qué cambió? *</label><div class="input-wrap"><i data-lucide="shuffle"></i><input type="text" id="foodChangeDesc" placeholder="Cambié de marca..."></div></div>
             </div>
             <div class="form-group"><label for="foodChangeReason">Motivo</label><textarea id="foodChangeReason" rows="2" placeholder="Recomendación vet..."></textarea></div>
-            <button class="btn btn-primary" onclick="APP.saveFoodChange()"><i data-lucide="plus"></i> Registrar Cambio</button>
+            <button class="btn btn-primary" onclick="APP.guard(APP.saveFoodChange, this)()"><i data-lucide="plus"></i> Registrar Cambio</button>
         </div>
     </div>
 
@@ -528,7 +528,7 @@
                         <div class="form-group"><label for="medDose">Dósis</label><div class="input-wrap"><i data-lucide="droplets"></i><input type="text" id="medDose" placeholder="15 mg"></div></div>
                     </div>
                     <div class="form-group"><label for="medInst">Instrucciones</label><textarea id="medInst" rows="2" placeholder="Cada 12 horas con comida"></textarea></div>
-                    <button class="btn btn-primary btn-sm" onclick="APP.addMedication()"><i data-lucide="plus"></i> Añadir</button>
+                    <button class="btn btn-primary btn-sm" onclick="APP.guard(APP.addMedication, this)()"><i data-lucide="plus"></i> Añadir</button>
                 </div>
             </div>
         </div>
@@ -551,7 +551,7 @@
                 <div class="form-group"><label for="cCost">Costo (CLP)</label><div class="input-wrap"><i data-lucide="banknote"></i><input type="number" id="cCost" placeholder="25000"></div></div>
             </div>
             <div class="form-group"><label for="cResult">Resultado / Notas clínicas</label><textarea id="cResult" rows="3" placeholder="Diagnóstico, tratamiento..."></textarea></div>
-            <button class="btn btn-primary" onclick="APP.saveControl()"><i data-lucide="save"></i> Guardar Visita</button>
+            <button class="btn btn-primary" onclick="APP.guard(APP.saveControl, this)()"><i data-lucide="save"></i> Guardar Visita</button>
         </div>
     </div>
 
@@ -583,7 +583,7 @@
                     <div class="form-group"><input type="date" id="noteDate"></div>
                     <div class="form-group"><input type="text" id="noteTitle" placeholder="Título"></div>
                     <div class="form-group"><textarea id="noteDesc" rows="2" placeholder="Detalle..."></textarea></div>
-                    <button class="filter-cta" onclick="APP.saveNote()"><i data-lucide="save"></i> Guardar Nota</button>
+                    <button class="filter-cta" onclick="APP.guard(APP.saveNote, this)()"><i data-lucide="save"></i> Guardar Nota</button>
                 </div>
 
                 <div class="fs-block">

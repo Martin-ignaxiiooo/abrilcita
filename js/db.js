@@ -2,14 +2,15 @@
    Abrilcita - db.js
    Capa de datos: Supabase (persistencia única en la nube)
    ==================================================
-   Todos los datos se guardan en Supabase. No se usa
-   localStorage: los datos viven en la nube y se
-   sincronizan entre dispositivos.
+   Cada tabla se guarda con su propia función para evitar
+   reescrituras completas y mantener integridad de datos.
+   Las listas usan diff por id (upsert/delete) en vez de
+   borrar-todo-e-insertar-todo.
    ================================================== */
 
 const DB = (function () {
 
-    // ---------- SCHEMA / TABLAS (mismo formato en ambos modos) ----------
+    // ---------- SCHEMA ----------
     const defaultDoc = () => ({
         profile: {},
         vaccines: [],
@@ -22,49 +23,28 @@ const DB = (function () {
         medications: []
     });
 
-    // ---------- SUPABASE CLIENT (se inicializa solo si es necesario) ----------
+    // ---------- SUPABASE CLIENT (caché: una sola instancia) ----------
     let supabaseClient = null;
 
     async function initSupabase() {
-        if (supabaseClient) return supabaseClient;   // reutilizar cliente (evita múltiples GoTrueClient)
-        if (!window.supabase) {
-            throw new Error('Supabase client no cargado. Agrega el script de supabase-js en index.html');
-        }
+        if (supabaseClient) return supabaseClient;
+        if (!window.supabase) throw new Error('Supabase client no cargado.');
         const cfg = window.APP_CONFIG.supabase;
-        if (!cfg.url || !cfg.anonKey) {
-            throw new Error('Supabase config incompleta. Revisa config.js o las variables de entorno de Vercel.');
-        }
+        if (!cfg.url || !cfg.anonKey) throw new Error('Supabase config incompleta.');
         supabaseClient = window.supabase.createClient(cfg.url, cfg.anonKey);
         return supabaseClient;
     }
 
-    // Lanza error si Supabase devuelve .error (evita fallos silenciosos)
     function checkError(res, op) {
         if (res && res.error) {
-            const msg = (res.error.message || res.error.code || 'error desconocido');
+            const msg = res.error.message || res.error.code || 'error desconocido';
             console.error('[Supabase] ' + op + ': ' + msg);
             throw new Error('Supabase: ' + op + ' falló (' + msg + ')');
         }
         return res;
     }
 
-    // ---------- MÉTODOS ----------
-    // GET completo (siempre desde Supabase)
-    async function get() {
-        return await getFromSupabase();
-    }
-
-    // SAVE completo (siempre a Supabase)
-    async function save(doc) {
-        return await saveToSupabase(doc);
-    }
-
-    // ---------- SUPABASE ----------
-    // Cada colección se guarda separada (múltiples filas por tabla).
-    // El documento se reconstruye al leer todas las tablas.
-    // IMPORTANTE: esta es la estrategia de migración a Supabase.
-
-    // Mapeo entre claves de la app (camelCase) y columnas de Supabase (snake_case)
+    // ---------- FIELD MAPS ----------
     const FIELD_MAPS = {
         profile: {
             name: 'name', birth: 'birth', breed: 'breed', weight: 'weight',
@@ -95,7 +75,7 @@ const DB = (function () {
         medications: { name: 'name', dose: 'dose', inst: 'inst' }
     };
 
-    // Convierte fila de Supabase (snake) -> doc app (camel)
+    // ---------- CONVERSORES ----------
     function rowToApp(map, row) {
         const out = { id: row.id };
         for (const [appKey, col] of Object.entries(map)) {
@@ -104,7 +84,6 @@ const DB = (function () {
         return out;
     }
 
-    // Convierte doc app (camel) -> fila Supabase (snake)
     function appToRow(map, obj) {
         const out = {};
         for (const [appKey, col] of Object.entries(map)) {
@@ -113,99 +92,125 @@ const DB = (function () {
         return out;
     }
 
-    async function getFromSupabase() {
+    // Helper: tabla de config → nombre real
+    function tableName(key) {
+        return window.APP_CONFIG.supabase.tables[key] || key;
+    }
+
+    // ---------- GET ----------
+    async function get() {
         await initSupabase();
-        const t = window.APP_CONFIG.supabase.tables;
         const doc = defaultDoc();
 
-        // profile (una fila)
-        const { data: profileRows } = checkError(await supabaseClient.from(t.profile).select('*').limit(1), 'select profile');
-        // Garantizar solo una fila (usa la primera)
+        const { data: profileRows } = checkError(
+            await supabaseClient.from(tableName('profile')).select('*').limit(1), 'select profile'
+        );
         doc.profile = profileRows && profileRows[0] ? rowToApp(FIELD_MAPS.profile, profileRows[0]) : {};
 
-        // Colecciones "listas"
-        const tablesMap = [
-            [t.vaccines, 'vaccines', FIELD_MAPS.vaccines],
-            [t.deworming, 'deworming', FIELD_MAPS.deworming],
-            [t.controls, 'controls', FIELD_MAPS.controls],
-            [t.notes, 'notes', FIELD_MAPS.notes],
-            [t.foodChanges, 'foodChanges', FIELD_MAPS.foodChanges],
-            [t.weights, 'weights', FIELD_MAPS.weights],
-            [t.medications, 'medications', FIELD_MAPS.medications]
-        ];
-        for (const [table, key, map] of tablesMap) {
-            const { data } = checkError(await supabaseClient.from(table).select('*'), 'select ' + key);
-            doc[key] = (data || []).map(r => rowToApp(map, r));
-        }
-
-        // food (una fila)
-        const { data: foodRows } = checkError(await supabaseClient.from(t.food).select('*').limit(1), 'select food');
+        const { data: foodRows } = checkError(
+            await supabaseClient.from(tableName('food')).select('*').limit(1), 'select food'
+        );
         doc.food = foodRows && foodRows[0] ? rowToApp(FIELD_MAPS.food, foodRows[0]) : {};
+
+        const listKeys = ['vaccines', 'deworming', 'controls', 'notes', 'foodChanges', 'weights', 'medications'];
+        for (const key of listKeys) {
+            const { data } = checkError(
+                await supabaseClient.from(tableName(key)).select('*'), 'select ' + key
+            );
+            doc[key] = (data || []).map(r => rowToApp(FIELD_MAPS[key], r));
+        }
 
         return doc;
     }
 
-    async function saveToSupabase(doc) {
+    // ---------- SAVE POR SECCIÓN ----------
+
+    // Tablas de una sola fila (profile, food)
+    async function saveSingleRow(data, key) {
         await initSupabase();
-        const t = window.APP_CONFIG.supabase.tables;
+        const map = FIELD_MAPS[key];
+        const row = appToRow(map, data || {});
+        const table = tableName(key);
+        if (!Object.keys(row).length) return;
 
-        // profile: upsert de una fila (mantiene un único registro)
-        const profileRow = appToRow(FIELD_MAPS.profile, doc.profile || {});
-        if (Object.keys(profileRow).length) {
-            // Si no hay id, inserta; si hay, actualiza
-            const { data: existing } = checkError(await supabaseClient.from(t.profile).select('id').limit(1), 'select profile id');
-            if (existing && existing[0]) {
-                checkError(await supabaseClient.from(t.profile).update(profileRow).eq('id', existing[0].id), 'update profile');
-            } else {
-                checkError(await supabaseClient.from(t.profile).insert(profileRow), 'insert profile');
+        const { data: existing } = checkError(await supabaseClient.from(table).select('id').limit(1), 'select ' + key + ' id');
+        if (existing && existing[0]) {
+            checkError(await supabaseClient.from(table).update(row).eq('id', existing[0].id), 'update ' + key);
+        } else {
+            checkError(await supabaseClient.from(table).insert(row), 'insert ' + key);
+        }
+    }
+
+    // Tablas de lista (vaccines, deworming, controls, notes, foodChanges, weights, medications)
+    // Estrategia: diff por id → insertar nuevos, actualizar existentes, borrar sobrantes
+    async function saveList(localItems, key) {
+        await initSupabase();
+        const map = FIELD_MAPS[key];
+        const table = tableName(key);
+        const items = localItems || [];
+
+        const { data: remoteRows } = checkError(
+            await supabaseClient.from(table).select('*'), 'select ' + key + ' for diff'
+        );
+        const remote = (remoteRows || []).map(r => rowToApp(map, r));
+        const localIds = new Set(items.map(x => x.id));
+        const remoteIds = new Set(remote.map(x => x.id));
+
+        // Filas a borrar (están en remoto pero no en local)
+        const toDelete = remote.filter(x => !localIds.has(x.id)).map(x => x.id);
+        if (toDelete.length) {
+            for (let i = 0; i < toDelete.length; i += 100) {
+                checkError(await supabaseClient.from(table).delete().in('id', toDelete.slice(i, i + 100)), 'delete ' + key);
             }
         }
 
-        // food: upsert de una fila
-        const foodRow = appToRow(FIELD_MAPS.food, doc.food || {});
-        if (Object.keys(foodRow).length) {
-            const { data: existing } = checkError(await supabaseClient.from(t.food).select('id').limit(1), 'select food id');
-            if (existing && existing[0]) {
-                checkError(await supabaseClient.from(t.food).update(foodRow).eq('id', existing[0].id), 'update food');
-            } else {
-                checkError(await supabaseClient.from(t.food).insert(foodRow), 'insert food');
-            }
+        // Filas a upsert (están en local → insert si no existe, update si existe)
+        const toUpsert = items.map(item => appToRow(map, item));
+        for (let i = 0; i < toUpsert.length; i += 100) {
+            checkError(await supabaseClient.from(table).upsert(toUpsert.slice(i, i + 100)), 'upsert ' + key);
         }
+    }
 
-        // listas: borrar y reinsertar (sencillo y consistente)
-        const tablesMap = [
-            [t.vaccines, 'vaccines', FIELD_MAPS.vaccines],
-            [t.deworming, 'deworming', FIELD_MAPS.deworming],
-            [t.controls, 'controls', FIELD_MAPS.controls],
-            [t.notes, 'notes', FIELD_MAPS.notes],
-            [t.foodChanges, 'foodChanges', FIELD_MAPS.foodChanges],
-            [t.weights, 'weights', FIELD_MAPS.weights],
-            [t.medications, 'medications', FIELD_MAPS.medications]
-        ];
-        for (const [table, key, map] of tablesMap) {
-            // Borrar todas las filas de la tabla
-            const { data: all } = checkError(await supabaseClient.from(table).select('id'), 'select ' + key + ' ids');
-            if (all && all.length) {
-                const ids = all.map(r => r.id);
-                // Borrar en lotes de 100 (límite de Supabase)
-                for (let i = 0; i < ids.length; i += 100) {
-                    checkError(await supabaseClient.from(table).delete().in('id', ids.slice(i, i + 100)), 'delete ' + key);
-                }
-            }
-            // Insertar las actuales
-            if ((doc[key] || []).length) {
-                const rows = doc[key].map(item => appToRow(map, item));
-                // Insertar en lotes de 100
-                for (let i = 0; i < rows.length; i += 100) {
-                    checkError(await supabaseClient.from(table).insert(rows.slice(i, i + 100)), 'insert ' + key);
-                }
-            }
+    // ---------- SAVE PÚBLICO ----------
+    // save(doc): guarda TODO el documento (usado por clearAllData)
+    async function save(doc) {
+        await saveSingleRow(doc.profile, 'profile');
+        await saveSingleRow(doc.food, 'food');
+        const listKeys = ['vaccines', 'deworming', 'controls', 'notes', 'foodChanges', 'weights', 'medications'];
+        for (const key of listKeys) {
+            await saveList(doc[key] || [], key);
         }
         return true;
     }
 
+    // saveProfile(data): guarda solo profile
+    async function saveProfile(data) { return await saveSingleRow(data, 'profile'); }
+
+    // saveFoodData(data): guarda solo food
+    async function saveFoodData(data) { return await saveSingleRow(data, 'food'); }
+
+    // saveVaccines(items): guarda solo vaccines
+    async function saveVaccines(items) { return await saveList(items, 'vaccines'); }
+
+    // saveDeworming(items): guarda solo deworming
+    async function saveDeworming(items) { return await saveList(items, 'deworming'); }
+
+    // saveControls(items): guarda solo controls
+    async function saveControls(items) { return await saveList(items, 'controls'); }
+
+    // saveNotes(items): guarda solo notes
+    async function saveNotes(items) { return await saveList(items, 'notes'); }
+
+    // saveFoodChanges(items): guarda solo foodChanges
+    async function saveFoodChanges(items) { return await saveList(items, 'foodChanges'); }
+
+    // saveWeights(items): guarda solo weights
+    async function saveWeights(items) { return await saveList(items, 'weights'); }
+
+    // saveMedications(items): guarda solo medications
+    async function saveMedications(items) { return await saveList(items, 'medications'); }
+
     // ---------- UTILIDADES ----------
-    // UUID v4 (columna uuid en Supabase)
     function genId() {
         return crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
             const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
@@ -214,7 +219,9 @@ const DB = (function () {
     }
 
     return {
-        get, save, genId
+        get, save, genId,
+        saveProfile, saveFoodData, saveVaccines, saveDeworming,
+        saveControls, saveNotes, saveFoodChanges, saveWeights, saveMedications
     };
 })();
 
