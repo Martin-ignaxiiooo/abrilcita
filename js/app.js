@@ -174,6 +174,49 @@ const APP = (function () {
         // Configurar foto upload
         $('catPhoto').addEventListener('change', handlePhotoUpload);
 
+        // Event delegation: un solo listener para todos los botones con data-action
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-action]');
+            if (!btn) return;
+            const action = btn.dataset.action;
+            const id = btn.dataset.id || '';
+            const actions = {
+                quickAdd: () => quickAdd(),
+                toggleProfileEdit: () => toggleProfileEdit(),
+                saveProfile: () => guard(saveProfile, btn)(),
+                saveVaccine: () => guard(saveVaccine, btn)(),
+                saveDeworming: () => guard(saveDeworming, btn)(),
+                addMeal: () => addMeal(),
+                toggleDietEdit: () => toggleDietEdit(),
+                saveWeight: () => guard(saveWeight, btn)(),
+                saveFood: () => guard(saveFood, btn)(),
+                saveSchedule: () => guard(saveFood, btn)(),
+                saveFoodChange: () => guard(saveFoodChange, btn)(),
+                newVisit: () => newVisit(),
+                addMedication: () => guard(addMedication, btn)(),
+                saveControl: () => guard(saveControl, btn)(),
+                renderApplyFilters: () => renderApplyFilters(),
+                saveNote: () => guard(saveNote, btn)(),
+                exportData: () => exportData(),
+                clearAllData: () => clearAllData(),
+                delControl: () => delControl(id),
+                delMedication: () => delMedication(id),
+                delVaccine: () => delVaccine(id),
+                delDeworming: () => delDeworming(id),
+                delWeight: () => delWeight(id),
+                delFoodChange: () => delFoodChange(id),
+                delHistoryItem: () => {
+                    const type = btn.dataset.type;
+                    if (type) delHistoryItem(type, id);
+                },
+                focusField: () => {
+                    const target = btn.dataset.target;
+                    if (target) focusField(target);
+                }
+            };
+            if (actions[action]) actions[action]();
+        });
+
         // Dinamismo: validación en vivo + contador de caracteres
         bindLiveValidation('formP', 'p', VALIDATORS.validateProfile, ['name','birth','breed','weight','rut','vetPhone','vet','color']);
         bindLiveValidation('formVax', 'vax', VALIDATORS.validateVaccine, ['type','date','next','cost','lot','lab','vet','notes']);
@@ -541,7 +584,7 @@ const APP = (function () {
                 '<div class="tl-reason">' + esc(v.type + (v.reason ? ' · ' + v.reason : '')) + '</div>' +
                 '<div class="tl-clinic"><i data-lucide="building-2"></i> ' + esc(v.clinic || v.vetName || 'Clínica') + '</div>' +
                 (v.result ? '<div style="font-size:var(--fs-sm);color:var(--gray-700)">' + esc(v.result) + '</div>' : '') +
-                '<button class="btn btn-link btn-sm" onclick="APP.delControl(\'' + v.id + '\')" style="margin-top:var(--sp-2)">Eliminar visita</button>' +
+                '<button class="btn btn-link btn-sm" data-action="delControl" data-id="' + v.id + '" style="margin-top:var(--sp-2)">Eliminar visita</button>' +
                 '</div></div>'
             ).join('');
             staggerRows(el, '.tl-item');
@@ -573,7 +616,7 @@ const APP = (function () {
                 '<div class="info-item">' +
                 '<div class="ii-icon"><i data-lucide="pill"></i></div>' +
                 '<div class="ii-body"><div class="ii-value">' + esc(m.name) + '</div><div class="ii-label">' + esc(m.dose || '') + (m.inst ? ' · ' + esc(m.inst) : '') + '</div></div>' +
-                '<div class="ii-badge" style="display:flex;gap:6px"><button class="btn btn-link btn-sm" onclick="APP.delMedication(\'' + m.id + '\')">Quitar</button></div>' +
+                '<div class="ii-badge" style="display:flex;gap:6px"><button class="btn btn-link btn-sm" data-action="delMedication" data-id="' + m.id + '">Quitar</button></div>' +
                 '</div>'
             ).join('');
             staggerRows(el, '.info-item');
@@ -645,11 +688,11 @@ const APP = (function () {
         fillCollectionKpis(db.vaccines, 'vaxKpi');
         const el = $('vaxBody');
         renderCalendar();
-        if (!(db.vaccines || []).length) { el.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon"><i data-lucide="syringe"></i></div><div class="empty-title">Sin vacunas registradas</div><div class="empty-text">Agrega la primera vacuna para empezar el carnet.</div><button class="btn btn-primary" onclick="APP.focusField(\'vaxType\')">Registrar vacuna</button></div></td></tr>'; refreshIcons(); renderVaccineCard(); return; }
+        if (!(db.vaccines || []).length) { el.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon"><i data-lucide="syringe"></i></div><div class="empty-title">Sin vacunas registradas</div><div class="empty-text">Agrega la primera vacuna para empezar el carnet.</div><button class="btn btn-primary" data-action="focusField" data-target="vaxType">Registrar vacuna</button></div></td></tr>'; refreshIcons(); renderVaccineCard(); return; }
         el.innerHTML = db.vaccines.map(vx => {
             const past = vx.next && new Date(vx.next) < new Date();
             const st = past ? '<span class="status status-danger"><i data-lucide="alert-triangle"></i> Vencido</span>' : (vx.next ? '<span class="status status-ok"><i data-lucide="check-circle-2"></i> Al día</span>' : '<span class="status status-pend"><i data-lucide="clock"></i> Sin ref.</span>');
-            return '<tr><td><input type="checkbox" class="checkbox" checked></td><td><strong>' + esc(vx.type) + '</strong></td><td>' + fmtDate(vx.date) + '</td><td>' + (vx.next ? fmtDate(vx.next) : '—') + '</td><td>' + st + '</td><td><button class="btn btn-danger btn-sm" onclick="APP.delVaccine(\'' + vx.id + '\')">✕</button></td></tr>';
+            return '<tr><td><input type="checkbox" class="checkbox" checked></td><td><strong>' + esc(vx.type) + '</strong></td><td>' + fmtDate(vx.date) + '</td><td>' + (vx.next ? fmtDate(vx.next) : '—') + '</td><td>' + st + '</td><td><button class="btn btn-danger btn-sm" data-action="delVaccine" data-id="' + vx.id + '">✕</button></td></tr>';
         }).join('');
         refreshIcons();
         renderVaccineCard(db);
@@ -673,7 +716,7 @@ const APP = (function () {
         let h = '<div class="vaccine-card">';
         h += '<div class="vc-logo"><i data-lucide="heart-pulse" style="width:40px;height:40px;color:var(--teal-dark)"></i></div>';
         h += '<div style="font-weight:800;font-size:1rem;margin:0.3rem 0;color:var(--gray-900)">' + esc(p.name || '—') + '</div>';
-        h += '<div style="font-size:0.75rem;color:var(--gray-500)">' + (p.breed || '') + (p.sex ? ' · ' + p.sex : '') + (p.weight ? ' · ' + p.weight + ' kg' : '') + '</div>';
+        h += '<div style="font-size:0.75rem;color:var(--gray-500)">' + esc(p.breed || '') + (p.sex ? ' · ' + esc(p.sex) : '') + (p.weight ? ' · ' + p.weight + ' kg' : '') + '</div>';
         if (p.rut) h += '<div style="font-size:0.7rem;color:var(--gray-500)">ID: ' + esc(p.rut) + '</div>';
         if (vs.length) {
             h += '<table style="width:100%;margin-top:0.8rem;font-size:0.75rem;border-collapse:collapse">';
@@ -712,10 +755,10 @@ const APP = (function () {
         fillCollectionKpis(db.deworming, 'despKpi');
         const el = $('despBody');
         if (!el) return;
-        if (!(db.deworming || []).length) { el.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon"><i data-lucide="droplet"></i></div><div class="empty-title">Sin registros de desparasitación</div><div class="empty-text">Registra la primera aplicación para controlar parásitos.</div><button class="btn btn-primary" onclick="APP.focusField(\'despType\')">Registrar</button></div></td></tr>'; refreshIcons(); return; }
+        if (!(db.deworming || []).length) { el.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon"><i data-lucide="droplet"></i></div><div class="empty-title">Sin registros de desparasitación</div><div class="empty-text">Registra la primera aplicación para controlar parásitos.</div><button class="btn btn-primary" data-action="focusField" data-target="despType">Registrar</button></div></td></tr>'; refreshIcons(); return; }
         el.innerHTML = db.deworming.map(dw => {
             const icon = dw.type === 'Externa' ? 'droplet' : (dw.type === 'Ambas' ? 'shield' : 'syringe');
-            return '<tr><td><div style="display:flex;align-items:center;gap:8px"><i data-lucide="' + icon + '" style="width:16px;height:16px;color:var(--teal)"></i> ' + esc(dw.type) + '</div></td><td>' + fmtDate(dw.date) + '</td><td><strong>' + esc(dw.product || '—') + '</strong></td><td>' + esc(dw.dose || '—') + '</td><td>' + (dw.next ? fmtDate(dw.next) : '—') + '</td><td><button class="btn btn-danger btn-sm" onclick="APP.delDeworming(\'' + dw.id + '\')">✕</button></td></tr>';
+            return '<tr><td><div style="display:flex;align-items:center;gap:8px"><i data-lucide="' + icon + '" style="width:16px;height:16px;color:var(--teal)"></i> ' + esc(dw.type) + '</div></td><td>' + fmtDate(dw.date) + '</td><td><strong>' + esc(dw.product || '—') + '</strong></td><td>' + esc(dw.dose || '—') + '</td><td>' + (dw.next ? fmtDate(dw.next) : '—') + '</td><td><button class="btn btn-danger btn-sm" data-action="delDeworming" data-id="' + dw.id + '">✕</button></td></tr>';
         }).join('');
         staggerRows(el);
         refreshIcons();
@@ -821,7 +864,7 @@ const APP = (function () {
             const list = (db.weights || []).slice().sort((a, b) => String(b.d).localeCompare(String(a.d)));
             if (!list.length) { el.innerHTML = ''; return; }
             el.innerHTML = '<div class="weight-list">' + list.slice(0, 10).map(x =>
-                '<div class="weight-item"><span class="wi-date">' + fmtDate(x.d) + '</span><span class="wi-value">' + parseFloat(x.w) + ' kg</span><button class="btn btn-danger btn-sm" onclick="APP.delWeight(\'' + x.id + '\')">✕</button></div>'
+                '<div class="weight-item"><span class="wi-date">' + fmtDate(x.d) + '</span><span class="wi-value">' + parseFloat(x.w) + ' kg</span><button class="btn btn-danger btn-sm" data-action="delWeight" data-id="' + x.id + '">✕</button></div>'
             ).join('') + '</div>';
             refreshIcons();
         });
@@ -850,7 +893,7 @@ const APP = (function () {
         if (!weights.length) {
             const box = $('weightChartBox');
             if (box) {
-                box.innerHTML = '<div class="empty-state"><div class="empty-icon"><i data-lucide="line-chart"></i></div><div class="empty-title">Sin registros de peso</div><div class="empty-text">Registra un control o edita el perfil para empezar la evolución.</div><button class="btn btn-primary" onclick="APP.focusField(\'pWeight\')">Registrar peso</button></div>';
+                box.innerHTML = '<div class="empty-state"><div class="empty-icon"><i data-lucide="line-chart"></i></div><div class="empty-title">Sin registros de peso</div><div class="empty-text">Registra un control o edita el perfil para empezar la evolución.</div><button class="btn btn-primary" data-action="focusField" data-target="pWeight">Registrar peso</button></div>';
                 refreshIcons();
             }
             return;
@@ -913,7 +956,7 @@ const APP = (function () {
             '<div class="info-item">' +
             '<div class="ii-icon"><i data-lucide="utensils-crossed"></i></div>' +
             '<div class="ii-body"><div class="ii-value">' + esc(c.desc) + '</div><div class="ii-label">' + fmtDate(c.date) + (c.reason ? ' · ' + esc(c.reason) : '') + '</div></div>' +
-            '<div class="ii-badge"><button class="btn btn-link btn-sm" onclick="APP.delFoodChange(\'' + c.id + '\')" title="Eliminar">Quitar</button></div>' +
+            '<div class="ii-badge"><button class="btn btn-link btn-sm" data-action="delFoodChange" data-id="' + c.id + '" title="Eliminar">Quitar</button></div>' +
             '</div>'
         ).join('') + '</div>';
         refreshIcons();
@@ -970,7 +1013,7 @@ const APP = (function () {
                     : i.type === 'fc' ? 'Ver plan'
                     : (i.type === 'note' ? 'Ver nota' : 'Ver registro');
                 return '<tr><td>' + fmtDate(i.date) + '</td><td><span style="display:inline-flex;align-items:center;gap:7px"><i data-lucide="' + catIcons[i.type] + '" style="width:16px;height:16px;color:var(--teal)"></i>' + i.cat + '</span></td><td><strong>' + esc(i.desc) + '</strong></td><td>' + badge + '</td>' +
-                    '<td><button class="btn btn-link btn-sm" onclick="APP.delHistoryItem(\'' + i.type + '\',\'' + i.id + '\')" title="Eliminar">' + action + '</button></td></tr>';
+                    '<td><button class="btn btn-link btn-sm" data-action="delHistoryItem" data-id="' + i.id + '" data-type="' + i.type + '" title="Eliminar">' + action + '</button></td></tr>';
             }).join('');
             staggerRows(el);
             refreshIcons();
