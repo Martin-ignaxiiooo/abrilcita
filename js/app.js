@@ -273,9 +273,12 @@ const APP = (function () {
         const reader = new FileReader();
         reader.onload = async function (ev) {
             const db = await DB.get();
-            db.profile.photo = ev.target.result;
-            await DB.saveProfile(db.profile);
+            // Mostrar preview inmediato
             applyPhotoUI(ev.target.result, 'navAvatar');
+            // Subir a Storage (con fallback a base64)
+            const url = await DB.uploadPhoto(file);
+            db.profile.photo = url;
+            await DB.saveProfile(db.profile);
             toast('Foto actualizada.');
         };
         reader.readAsDataURL(file);

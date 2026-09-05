@@ -188,6 +188,31 @@ const DB = (function () {
     // saveProfile(data): guarda solo profile
     async function saveProfile(data) { return await saveSingleRow(data, 'profile'); }
 
+    // uploadPhoto(file): sube foto a Supabase Storage y retorna la URL pública.
+    // Si el bucket no existe o falla, convierte a base64 como fallback.
+    async function uploadPhoto(file) {
+        await initSupabase();
+        const ext = file.name.split('.').pop() || 'jpg';
+        const path = 'avatars/' + Date.now() + '.' + ext;
+        try {
+            const { error: upErr } = checkError(
+                await supabaseClient.storage.from('avatars').upload(path, file, { upsert: true }),
+                'upload photo'
+            );
+            if (upErr) throw upErr;
+            const { data: urlData } = supabaseClient.storage.from('avatars').getPublicUrl(path);
+            return urlData.publicUrl;
+        } catch (e) {
+            // Fallback: base64 data URL
+            console.warn('Storage upload failed, using base64 fallback:', e.message);
+            return await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (ev) => resolve(ev.target.result);
+                reader.readAsDataURL(file);
+            });
+        }
+    }
+
     // saveFoodData(data): guarda solo food
     async function saveFoodData(data) { return await saveSingleRow(data, 'food'); }
 
@@ -221,7 +246,7 @@ const DB = (function () {
     }
 
     return {
-        get, save, genId,
+        get, save, genId, uploadPhoto,
         saveProfile, saveFoodData, saveVaccines, saveDeworming,
         saveControls, saveNotes, saveFoodChanges, saveWeights, saveMedications
     };
