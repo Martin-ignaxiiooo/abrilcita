@@ -272,14 +272,17 @@ const APP = (function () {
         if (!file.type.startsWith('image/')) { toast('Debes seleccionar una imagen.', 'error'); return; }
         const reader = new FileReader();
         reader.onload = async function (ev) {
-            const db = await DB.get();
-            // Mostrar preview inmediato
-            applyPhotoUI(ev.target.result, 'navAvatar');
-            // Subir a Storage (con fallback a base64)
-            const url = await DB.uploadPhoto(file);
-            db.profile.photo = url;
-            await DB.saveProfile(db.profile);
-            toast('Foto actualizada.');
+            try {
+                applyPhotoUI(ev.target.result, 'navAvatar');
+                const url = await DB.uploadPhoto(file);
+                const db = await DB.get();
+                db.profile.photo = url;
+                await DB.saveProfile(db.profile);
+                toast('Foto actualizada.');
+            } catch (err) {
+                console.error('Photo upload error:', err);
+                toast('Error al subir foto: ' + err.message, 'error');
+            }
         };
         reader.readAsDataURL(file);
     }
@@ -318,13 +321,22 @@ const APP = (function () {
     } catch (e) { console.error(e); toast('Error al guardar perfil: ' + e.message, 'error'); }
     }
 
+    // Helper: DB.get() con .catch para evitar UI congelada
+    function safeGet(fn, fallback) {
+        DB.get().then(fn).catch(e => {
+            console.error('DB.get() error:', e);
+            if (fallback) fallback();
+            toast('Error al cargar datos. Revisa tu conexión.', 'error');
+        });
+    }
+
     // ---------- INICIO / HOME DASHBOARD ----------
     function renderHome() {
         // Estado de carga inmediato (antes de DB.get)
         if ($('homeName')) $('homeName').textContent = 'Cargando…';
         if ($('homeAge')) $('homeAge').textContent = '…';
         if ($('homeWeight')) $('homeWeight').textContent = '…';
-        DB.get().then(db => {
+        safeGet(db => {
             const p = db.profile || {};
             // Brand + pet overview
             if ($('brandName')) $('brandName').textContent = p.name || 'Abrilcita';
@@ -356,6 +368,10 @@ const APP = (function () {
 
             // Upcoming alerts
             renderAlerts(db);
+        }, () => {
+            if ($('homeName')) $('homeName').textContent = 'Error';
+            if ($('homeAge')) $('homeAge').textContent = '—';
+            if ($('homeWeight')) $('homeWeight').textContent = '—';
         });
     }
 
@@ -485,7 +501,7 @@ const APP = (function () {
         const show = card.style.display === 'none';
         if (!show) {
             // Al cerrar: confirmar si hay cambios sin guardar
-            DB.get().then(db => {
+            safeGet(db => {
                 const p = db.profile || {};
                 const current = { name: val('pName'), birth: val('pBirth'), weight: val('pWeight') };
                 const dirty = current.name !== (p.name || '') || current.birth !== (p.birth || '') || current.weight !== (p.weight || '');
@@ -503,7 +519,7 @@ const APP = (function () {
 
     // ---------- ALIMENTACIÓN: minitarjetas + alertas ----------
     function renderDietStats() {
-        DB.get().then(db => {
+        safeGet(db => {
             const f = db.food || {};
             const timesMap = { '1': '1 vez/día', '2': '2 veces/día', '3': '3 veces/día', 'libre': 'Libre' };
             if ($('dietBrand')) $('dietBrand').textContent = f.brand || '—';
@@ -581,7 +597,7 @@ const APP = (function () {
     }
 
     function renderVisits() {
-        DB.get().then(db => {
+        safeGet(db => {
             const el = $('visitsTimeline');
             if (!el) return;
             const visits = (db.controls || []).slice().sort((a, b) => String(b.date).localeCompare(a.date));
@@ -616,7 +632,7 @@ const APP = (function () {
 
     // ---------- MEDICACIÓN ----------
     function renderMedications() {
-        DB.get().then(db => {
+        safeGet(db => {
             const el = $('medList');
             if (!el) return;
             const meds = db.medications || [];
@@ -681,7 +697,7 @@ const APP = (function () {
     }
 
     function renderCalendar() {
-        DB.get().then(db => {
+        safeGet(db => {
             const now = new Date(), y = now.getFullYear(), m = now.getMonth();
             const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
             const first = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate();
@@ -826,7 +842,7 @@ const APP = (function () {
     }
 
     function loadFoodForm() {
-        DB.get().then(db => {
+        safeGet(db => {
             const f = db.food || {};
             setVal('foodType', f.type); setVal('foodBrand', f.brand); setVal('foodAmount', f.amount);
             setVal('foodCost', f.cost); setVal('foodNotes', f.notes); setVal('foodSupplements', f.supplements);
@@ -887,7 +903,7 @@ const APP = (function () {
     function renderWeightList() {
         const el = $('weightList');
         if (!el) return;
-        DB.get().then(db => {
+        safeGet(db => {
             const list = (db.weights || []).slice().sort((a, b) => String(b.d).localeCompare(String(a.d)));
             if (!list.length) { el.innerHTML = ''; return; }
             el.innerHTML = '<div class="weight-list">' + list.slice(0, 10).map(x =>
@@ -951,7 +967,7 @@ const APP = (function () {
     }
 
     function renderMealSchedule() {
-        DB.get().then(db => {
+        safeGet(db => {
             const f = db.food || {};
             [['meal1time', f.time1], ['meal2time', f.time2], ['meal3time', f.time3]].forEach(([id, t]) => {
                 const el = $(id); if (el) el.textContent = t || '--:--';
@@ -1080,7 +1096,7 @@ const APP = (function () {
 
     // ============ EXPORT / CLEAR ============
     function exportData() {
-        DB.get().then(db => {
+        safeGet(db => {
             const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
