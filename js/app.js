@@ -425,7 +425,8 @@ const APP = (function () {
     // Llena los 4 KPIs de una colección (vacunas/desparasitación) dado un prefijo de ids
     function fillCollectionKpis(arr, prefix) {
         const list = arr || [];
-        const overdue = list.filter(x => x.next && new Date(x.next) < new Date()).length;
+        const stMap = vaccineStatusMap(list);
+        const overdue = list.filter(x => stMap.get(x.id) === 'overdue').length;
         const ok = list.length - overdue;
         const next = nextExpiry(list);
         const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
@@ -436,10 +437,46 @@ const APP = (function () {
     }
 
     // true=al día, false=algo vencido, 'none'=sin datos
+    // Agrupa vacunas por type y devuelve un Map<id, status> donde status es
+    // 'overdue' solo para la dosis MÁS RECIENTE de cada tipo cuyo next esté vencido.
+    // Las dosis anteriores de la misma serie se marcan como 'completed'.
+    function vaccineStatusMap(vaccines) {
+        const map = new Map();
+        if (!vaccines || !vaccines.length) return map;
+        const today = new Date().toISOString().slice(0, 10);
+
+        // Agrupar por type
+        const groups = {};
+        vaccines.forEach(v => {
+            const key = v.type || '__none__';
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(v);
+        });
+
+        // Para cada grupo, ordenar por date y evaluar solo la última dosis
+        Object.values(groups).forEach(group => {
+            group.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+            const latest = group[group.length - 1];
+            const latestOverdue = latest.next && latest.next < today;
+
+            group.forEach((v, i) => {
+                if (v.id === latest.id) {
+                    // La dosis más reciente: evaluar normalmente
+                    map.set(v.id, latestOverdue ? 'overdue' : (v.next ? 'ok' : 'no_ref'));
+                } else {
+                    // Dosis anteriores de la misma serie: siempre "completada"
+                    map.set(v.id, 'completed');
+                }
+            });
+        });
+        return map;
+    }
+
     function statusOf(arr) {
         const a = arr || [];
         if (!a.length) return 'none';
-        return !a.some(x => x.next && new Date(x.next) < new Date());
+        const stMap = vaccineStatusMap(a);
+        return !Array.from(stMap.values()).some(s => s === 'overdue');
     }
 
     let _homeWeightChart = null;
@@ -723,10 +760,14 @@ const APP = (function () {
         const el = $('vaxBody');
         renderCalendar();
         if (!(db.vaccines || []).length) { el.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon"><i data-lucide="syringe"></i></div><div class="empty-title">Sin vacunas registradas</div><div class="empty-text">Agrega la primera vacuna para empezar el carnet.</div><button class="btn btn-primary" data-action="focusField" data-target="vaxType">Registrar vacuna</button></div></td></tr>'; refreshIcons(); renderVaccineCard(); return; }
+        const stMap = vaccineStatusMap(db.vaccines);
         el.innerHTML = db.vaccines.map(vx => {
-            const past = vx.next && new Date(vx.next) < new Date();
-            const st = past ? '<span class="status status-danger"><i data-lucide="alert-triangle"></i> Vencido</span>' : (vx.next ? '<span class="status status-ok"><i data-lucide="check-circle-2"></i> Al día</span>' : '<span class="status status-pend"><i data-lucide="clock"></i> Sin ref.</span>');
-            return '<tr><td><input type="checkbox" class="checkbox" checked></td><td><strong>' + esc(vx.type) + '</strong></td><td>' + fmtDate(vx.date) + '</td><td>' + (vx.next ? fmtDate(vx.next) : '—') + '</td><td>' + st + '</td><td><button class="btn btn-danger btn-sm" data-action="delVaccine" data-id="' + vx.id + '">✕</button></td></tr>';
+            const st = stMap.get(vx.id);
+            const label = st === 'overdue' ? '<span class="status status-danger"><i data-lucide="alert-triangle"></i> Vencido</span>'
+                : st === 'completed' ? '<span class="status status-ok"><i data-lucide="check-circle-2"></i> Completada</span>'
+                : st === 'ok' ? '<span class="status status-ok"><i data-lucide="check-circle-2"></i> Al día</span>'
+                : '<span class="status status-pend"><i data-lucide="clock"></i> Sin ref.</span>';
+            return '<tr><td><input type="checkbox" class="checkbox" checked></td><td><strong>' + esc(vx.type) + '</strong></td><td>' + fmtDate(vx.date) + '</td><td>' + (vx.next ? fmtDate(vx.next) : '—') + '</td><td>' + label + '</td><td><button class="btn btn-danger btn-sm" data-action="delVaccine" data-id="' + vx.id + '">✕</button></td></tr>';
         }).join('');
         refreshIcons();
         renderVaccineCard(db);
@@ -754,12 +795,14 @@ const APP = (function () {
         h += '<div style="font-size:0.75rem;color:var(--gray-500)">' + esc(p.breed || '') + (p.sex ? ' · ' + esc(p.sex) : '') + (p.weight ? ' · ' + p.weight + ' kg' : '') + '</div>';
         if (p.rut) h += '<div style="font-size:0.7rem;color:var(--gray-500)">ID: ' + esc(p.rut) + '</div>';
         if (vs.length) {
+            const stMap = vaccineStatusMap(vs);
             h += '<table style="width:100%;margin-top:0.8rem;font-size:0.75rem;border-collapse:collapse">';
             h += '<tr style="background:var(--teal);color:white"><th style="padding:0.3rem;text-align:left">Vacuna</th><th style="padding:0.3rem;text-align:left">Fecha</th><th style="padding:0.3rem;text-align:left">Estado</th></tr>';
             vs.forEach(vx => {
-                const past = vx.next && new Date(vx.next) < new Date();
-                const st = past ? 'VENCIDO' : (vx.next ? 'OK' : 'SIN REF.');
-                h += '<tr><td style="padding:0.3rem;border-bottom:1px solid var(--gray-200);font-size:0.8rem;text-align:left"><strong>' + esc(vx.type) + '</strong></td><td style="padding:0.3rem;border-bottom:1px solid var(--gray-200);font-size:0.8rem">' + fmtDate(vx.date) + '</td><td style="padding:0.3rem;border-bottom:1px solid var(--gray-200)"><span class="status ' + (past ? 'status-danger' : 'status-ok') + '">' + st + '</span></td></tr>';
+                const st = stMap.get(vx.id);
+                const label = st === 'overdue' ? 'VENCIDO' : st === 'completed' ? 'COMPLETADA' : st === 'ok' ? 'OK' : 'SIN REF.';
+                const cls = st === 'overdue' ? 'status-danger' : 'status-ok';
+                h += '<tr><td style="padding:0.3rem;border-bottom:1px solid var(--gray-200);font-size:0.8rem;text-align:left"><strong>' + esc(vx.type) + '</strong></td><td style="padding:0.3rem;border-bottom:1px solid var(--gray-200);font-size:0.8rem">' + fmtDate(vx.date) + '</td><td style="padding:0.3rem;border-bottom:1px solid var(--gray-200)"><span class="status ' + cls + '">' + label + '</span></td></tr>';
             });
             h += '</table>';
         }
@@ -1068,7 +1111,8 @@ const APP = (function () {
         }
 
         const sum = $('historySummary');
-        const overdue = (db.vaccines || []).filter(v => v.next && new Date(v.next) < new Date()).length;
+        const stMap = vaccineStatusMap(db.vaccines || []);
+        const overdue = (db.vaccines || []).filter(v => stMap.get(v.id) === 'overdue').length;
         sum.innerHTML = '<div style="font-size:0.85rem;display:grid;gap:0.4rem">' +
             '<div><i data-lucide="syringe" style="width:14px;height:14px;color:var(--teal);margin-right:4px"></i>Vacunas: <strong>' + (db.vaccines || []).length + '</strong>' + (overdue ? ' <span style="color:#C62828">(' + overdue + ' vencidas)</span>' : '') + '</div>' +
             '<div><i data-lucide="bug" style="width:14px;height:14px;color:var(--teal);margin-right:4px"></i>Desparasitaciones: <strong>' + (db.deworming || []).length + '</strong></div>' +
