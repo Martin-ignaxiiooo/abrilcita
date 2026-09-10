@@ -189,6 +189,7 @@ const APP = (function () {
                 addMeal: () => addMeal(),
                 toggleDietEdit: () => toggleDietEdit(),
                 saveWeight: () => guard(saveWeight, btn)(),
+                refreshWeights: () => guard(refreshWeights, btn, 'Actualizando…')(),
                 saveFood: () => guard(saveFood, btn)(),
                 saveSchedule: () => guard(saveFood, btn)(),
                 saveFoodChange: () => guard(saveFoodChange, btn)(),
@@ -929,6 +930,17 @@ const APP = (function () {
         renderHome();
         toast('Peso registrado.');
         } catch (e) { console.error(e); toast('Error al guardar peso: ' + e.message, 'error'); }
+    }
+
+    // Fuerza una relectura de los pesos directo desde Supabase (por si el
+    // dispositivo no ve un registro agregado desde otro dispositivo).
+    async function refreshWeights() {
+        try {
+            renderWeightList();
+            await renderWeightChart();
+            renderHome();
+            toast('Datos actualizados.');
+        } catch (e) { console.error(e); toast('Error al actualizar: ' + e.message, 'error'); }
     }
 
     async function delWeight(id) {

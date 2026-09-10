@@ -1,4 +1,4 @@
-const CACHE = 'abrilcita-v2';
+const CACHE = 'abrilcita-v3';
 const SHELL = [
   './',
   './index.html',
@@ -18,6 +18,12 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting())
   );
+});
+
+// Permite que la página le pida al SW nuevo que tome control de inmediato,
+// en vez de esperar a que se cierren todas las pestañas/instancias abiertas.
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {

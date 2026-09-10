@@ -420,7 +420,10 @@
                 </div>
             </div>
             <div class="card" style="margin-top:0">
-                <div class="card-head"><span class="card-title"><span class="dot"></span>Evolución de peso</span></div>
+                <div class="card-head" style="justify-content:space-between">
+                    <span class="card-title"><span class="dot"></span>Evolución de peso</span>
+                    <button type="button" class="btn btn-sm" data-action="refreshWeights" title="Volver a cargar los pesos guardados en la nube"><i data-lucide="refresh-cw"></i> Actualizar</button>
+                </div>
                 <div class="chart-box" id="weightChartBox"><canvas id="weightChart"></canvas></div>
                 <div class="chart-summary">
                     <span class="cs-item">Peso actual: <strong id="chartWeight">—</strong></span>
@@ -612,10 +615,41 @@
     <script src="js/app.js"></script>
     <script>
         // Registro de Service Worker (PWA instalable + offline)
+        // + Auto-actualización: si hay una versión nueva del código, se activa
+        // sola y recarga la página, para que ningún dispositivo quede "pegado"
+        // en una versión vieja de la app.
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () {
-                navigator.serviceWorker.register('./sw.js').catch(function (err) {
+                navigator.serviceWorker.register('./sw.js').then(function (reg) {
+                    // Revisa si ya hay una versión nueva esperando
+                    if (reg.waiting) { reg.waiting.postMessage('SKIP_WAITING'); }
+
+                    // Detecta cuando se descarga una nueva versión del SW
+                    reg.addEventListener('updatefound', function () {
+                        const newWorker = reg.installing;
+                        if (!newWorker) return;
+                        newWorker.addEventListener('statechange', function () {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                newWorker.postMessage('SKIP_WAITING');
+                            }
+                        });
+                    });
+
+                    // Revisa periódicamente si hay actualizaciones (cada vez que
+                    // vuelve al primer plano, ej. al reabrir la app)
+                    document.addEventListener('visibilitychange', function () {
+                        if (document.visibilityState === 'visible') reg.update();
+                    });
+                }).catch(function (err) {
                     console.error('SW registration failed', err);
+                });
+
+                // Cuando el nuevo SW toma control, recarga automáticamente una vez
+                let refreshed = false;
+                navigator.serviceWorker.addEventListener('controllerchange', function () {
+                    if (refreshed) return;
+                    refreshed = true;
+                    window.location.reload();
                 });
             });
         }
