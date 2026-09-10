@@ -4,8 +4,11 @@
    ==================================================
    Cada tabla se guarda con su propia función para evitar
    reescrituras completas y mantener integridad de datos.
-   Las listas usan diff por id (upsert/delete) en vez de
-   borrar-todo-e-insertar-todo.
+   Las listas se guardan por upsert (nunca se borra por
+   comparación); el borrado de un registro puntual se hace
+   con las funciones deleteXxx(id), para que un dispositivo
+   con datos desactualizados nunca borre por error registros
+   creados por otro dispositivo.
    ================================================== */
 
 const DB = (function () {
@@ -144,43 +147,71 @@ const DB = (function () {
     }
 
     // Tablas de lista (vaccines, deworming, controls, notes, foodChanges, weights, medications)
-    // Estrategia: diff por id → insertar nuevos, actualizar existentes, borrar sobrantes
+    // ---------------------------------------------------------------
+    // IMPORTANTE (fix de integridad multi-dispositivo):
+    // Antes esta función comparaba la lista local contra TODO lo que
+    // hubiera en Supabase y borraba cualquier fila remota que el
+    // dispositivo actual no conociera. Eso significaba que si el
+    // Dispositivo A tenía la lista cargada en memoria y el Dispositivo B
+    // agregaba un registro nuevo, al guardar A se borraba lo que B
+    // acababa de crear (porque A no sabía que existía).
+    //
+    // Ahora la estrategia es "solo upsert, nunca borrar por comparación":
+    // - Cada item local se guarda (insert si es nuevo, update si ya existe).
+    // - El borrado de un registro específico se hace aparte, por id,
+    //   con deleteById() en el momento exacto en que el usuario borra
+    //   ese registro (ver delItem más abajo). Así nunca se borra algo
+    //   que el dispositivo actual no pidió borrar explícitamente.
+    // ---------------------------------------------------------------
     async function saveList(localItems, key) {
         await initSupabase();
         const map = FIELD_MAPS[key];
         const table = tableName(key);
         const items = localItems || [];
+        if (!items.length) return;
 
-        const { data: remoteRows } = checkError(
-            await supabaseClient.from(table).select('*'), 'select ' + key + ' for diff'
-        );
-        const remote = (remoteRows || []).map(r => rowToApp(map, r));
-        const localIds = new Set(items.map(x => x.id));
-        const remoteIds = new Set(remote.map(x => x.id));
-
-        // Filas a borrar (están en remoto pero no en local)
-        const toDelete = remote.filter(x => !localIds.has(x.id)).map(x => x.id);
-        if (toDelete.length) {
-            for (let i = 0; i < toDelete.length; i += 100) {
-                checkError(await supabaseClient.from(table).delete().in('id', toDelete.slice(i, i + 100)), 'delete ' + key);
-            }
-        }
-
-        // Filas a upsert (están en local → insert si no existe, update si existe)
         const toUpsert = items.map(item => ({ id: item.id, ...appToRow(map, item) }));
         for (let i = 0; i < toUpsert.length; i += 100) {
             checkError(await supabaseClient.from(table).upsert(toUpsert.slice(i, i + 100), { onConflict: 'id' }), 'upsert ' + key);
         }
     }
 
+    // Borra un único registro por id de una tabla de lista.
+    // Usar esto (en vez de saveList con el array filtrado) evita que un
+    // dispositivo con datos desactualizados borre por error registros
+    // nuevos creados por otro dispositivo.
+    async function deleteById(id, key) {
+        await initSupabase();
+        const table = tableName(key);
+        checkError(await supabaseClient.from(table).delete().eq('id', id), 'delete ' + key);
+    }
+
     // ---------- SAVE PÚBLICO ----------
-    // save(doc): guarda TODO el documento (usado por clearAllData)
+    // save(doc): guarda TODO el documento vía upsert (no borra nada que
+    // el dispositivo no conozca; ver deleteAll() para el borrado total).
     async function save(doc) {
         await saveSingleRow(doc.profile, 'profile');
         await saveSingleRow(doc.food, 'food');
         const listKeys = ['vaccines', 'deworming', 'controls', 'notes', 'foodChanges', 'weights', 'medications'];
         for (const key of listKeys) {
             await saveList(doc[key] || [], key);
+        }
+        return true;
+    }
+
+    // deleteAll(): borra TODAS las filas de TODAS las tablas.
+    // Es un borrado intencional y explícito (botón "Borrar Todo"),
+    // a diferencia de saveList/save que nunca borran por comparación.
+    async function deleteAll() {
+        await initSupabase();
+        const listKeys = ['vaccines', 'deworming', 'controls', 'notes', 'foodChanges', 'weights', 'medications'];
+        for (const key of listKeys) {
+            const table = tableName(key);
+            checkError(await supabaseClient.from(table).delete().neq('id', '00000000-0000-0000-0000-000000000000'), 'delete all ' + key);
+        }
+        for (const key of ['profile', 'food']) {
+            const table = tableName(key);
+            checkError(await supabaseClient.from(table).delete().neq('id', '00000000-0000-0000-0000-000000000000'), 'delete all ' + key);
         }
         return true;
     }
@@ -237,6 +268,15 @@ const DB = (function () {
     // saveMedications(items): guarda solo medications
     async function saveMedications(items) { return await saveList(items, 'medications'); }
 
+    // ---------- BORRADO POR ID (seguro para multi-dispositivo) ----------
+    async function deleteWeight(id) { return await deleteById(id, 'weights'); }
+    async function deleteVaccine(id) { return await deleteById(id, 'vaccines'); }
+    async function deleteDeworming(id) { return await deleteById(id, 'deworming'); }
+    async function deleteControl(id) { return await deleteById(id, 'controls'); }
+    async function deleteNote(id) { return await deleteById(id, 'notes'); }
+    async function deleteFoodChange(id) { return await deleteById(id, 'foodChanges'); }
+    async function deleteMedication(id) { return await deleteById(id, 'medications'); }
+
     // ---------- UTILIDADES ----------
     function genId() {
         return crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
@@ -246,9 +286,11 @@ const DB = (function () {
     }
 
     return {
-        get, save, genId, uploadPhoto,
+        get, save, deleteAll, genId, uploadPhoto,
         saveProfile, saveFoodData, saveVaccines, saveDeworming,
-        saveControls, saveNotes, saveFoodChanges, saveWeights, saveMedications
+        saveControls, saveNotes, saveFoodChanges, saveWeights, saveMedications,
+        deleteWeight, deleteVaccine, deleteDeworming, deleteControl,
+        deleteNote, deleteFoodChange, deleteMedication
     };
 })();
 

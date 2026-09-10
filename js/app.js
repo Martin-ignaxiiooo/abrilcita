@@ -660,8 +660,8 @@ const APP = (function () {
     async function delControl(id) {
         try {
         const db = await DB.get();
+        await DB.deleteControl(id);
         db.controls = db.controls.filter(c => c.id !== id);
-        await DB.saveControls(db.controls);
         renderVisits();
         renderHome();
         toast('Visita eliminada.');
@@ -707,8 +707,8 @@ const APP = (function () {
     async function delMedication(id) {
         try {
         const db = await DB.get();
+        await DB.deleteMedication(id);
         db.medications = (db.medications || []).filter(m => m.id !== id);
-        await DB.saveMedications(db.medications);
         renderMedications();
         toast('Medicamento eliminado.');
         } catch (e) { console.error(e); toast('Error al eliminar: ' + e.message, 'error'); }
@@ -779,8 +779,8 @@ const APP = (function () {
     async function delVaccine(id) {
         try {
         const db = await DB.get();
+        await DB.deleteVaccine(id);
         db.vaccines = db.vaccines.filter(v => v.id !== id);
-        await DB.saveVaccines(db.vaccines);
         renderAllVaccines();
         toast('Vacuna eliminada.');
         } catch (e) { console.error(e); toast('Error al eliminar: ' + e.message, 'error'); }
@@ -848,8 +848,8 @@ const APP = (function () {
     async function delDeworming(id) {
         try {
         const db = await DB.get();
+        await DB.deleteDeworming(id);
         db.deworming = db.deworming.filter(d => d.id !== id);
-        await DB.saveDeworming(db.deworming);
         renderAllDeworming();
         toast('Registro eliminado.');
         } catch (e) { console.error(e); toast('Error al eliminar: ' + e.message, 'error'); }
@@ -946,8 +946,8 @@ const APP = (function () {
     async function delWeight(id) {
         try {
         const db = await DB.get();
+        await DB.deleteWeight(id);
         db.weights = (db.weights || []).filter(x => x.id !== id);
-        await DB.saveWeights(db.weights);
         renderWeightList();
         renderWeightChart();
         renderHome();
@@ -1065,8 +1065,8 @@ const APP = (function () {
     async function delFoodChange(id) {
         try {
         const db = await DB.get();
+        await DB.deleteFoodChange(id);
         db.foodChanges = (db.foodChanges || []).filter(c => c.id !== id);
-        await DB.saveFoodChanges(db.foodChanges);
         renderFoodHistory();
         toast('Cambio eliminado.');
         } catch (e) { console.error(e); toast('Error al eliminar: ' + e.message, 'error'); }
@@ -1138,11 +1138,11 @@ const APP = (function () {
     async function delHistoryItem(type, id) {
         try {
         const db = await DB.get();
-        if (type === 'vax') { db.vaccines = db.vaccines.filter(v => v.id !== id); await DB.saveVaccines(db.vaccines); }
-        if (type === 'desp') { db.deworming = db.deworming.filter(d => d.id !== id); await DB.saveDeworming(db.deworming); }
-        if (type === 'ctrl') { db.controls = db.controls.filter(c => c.id !== id); await DB.saveControls(db.controls); }
-        if (type === 'note') { db.notes = db.notes.filter(n => n.id !== id); await DB.saveNotes(db.notes); }
-        if (type === 'fc') { db.foodChanges = (db.foodChanges || []).filter(f => f.id !== id); await DB.saveFoodChanges(db.foodChanges); }
+        if (type === 'vax') { await DB.deleteVaccine(id); db.vaccines = db.vaccines.filter(v => v.id !== id); }
+        if (type === 'desp') { await DB.deleteDeworming(id); db.deworming = db.deworming.filter(d => d.id !== id); }
+        if (type === 'ctrl') { await DB.deleteControl(id); db.controls = db.controls.filter(c => c.id !== id); }
+        if (type === 'note') { await DB.deleteNote(id); db.notes = db.notes.filter(n => n.id !== id); }
+        if (type === 'fc') { await DB.deleteFoodChange(id); db.foodChanges = (db.foodChanges || []).filter(f => f.id !== id); }
         renderHistory();
         toast('Eliminado.');
         } catch (e) { console.error(e); toast('Error al eliminar: ' + e.message, 'error'); }
@@ -1165,8 +1165,8 @@ const APP = (function () {
     async function clearAllData() {
         if (!confirm('¿Borrar TODOS los datos de Abrilcita?')) return;
         if (!confirm('¿Definitivamente?')) return;
-        // Borrar todas las tablas de Supabase
-        await DB.save({ profile: {}, vaccines: [], deworming: [], controls: [], notes: [], food: {}, foodChanges: [], weights: [], medications: [] });
+        // Borrar todas las tablas de Supabase (borrado explícito e intencional)
+        await DB.deleteAll();
         toast('Datos borrados de Supabase.');
         location.reload();
     }
