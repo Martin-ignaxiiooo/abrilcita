@@ -372,7 +372,7 @@ const APP = (function () {
             // Brand + pet overview
             if ($('brandName')) $('brandName').textContent = p.name || 'Abrilcita';
             const navAvatar = $('navAvatar');
-            if (navAvatar) navAvatar.innerHTML = p.photo ? '<img src="' + p.photo + '" alt="' + esc(p.name || '') + '">' : '<img src="assets/logo.svg" alt="Logo">';
+            if (navAvatar) navAvatar.innerHTML = p.photo ? '<img src="' + p.photo + '" alt="' + esc(p.name || '') + '">' : '<img src="assets/icon-192.png" alt="Logo">';
             if ($('homeName')) $('homeName').textContent = p.name || 'Sin nombre';
             if ($('homeAge')) $('homeAge').textContent = calcAge(p.birth);
             if ($('homeWeight')) $('homeWeight').textContent = (p.weight ? p.weight + ' kg' : '—');

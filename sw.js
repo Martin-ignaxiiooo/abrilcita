@@ -1,4 +1,4 @@
-const CACHE = 'abrilcita-v3';
+const CACHE = 'abrilcita-v4';
 const SHELL = [
   './',
   './index.html',
@@ -9,9 +9,10 @@ const SHELL = [
   './js/validaciones.js',
   './js/app.js',
   './js/router.js',
-  './assets/logo.svg',
+  './assets/icon-180.png',
   './assets/icon-192.png',
-  './assets/icon-512.png'
+  './assets/icon-512.png',
+  './assets/icon-512-maskable.png'
 ];
 
 self.addEventListener('install', (event) => {
