@@ -285,12 +285,48 @@ const DB = (function () {
         });
     }
 
+    // ---------- REALTIME ----------
+    // Se suscribe a cambios (INSERT/UPDATE/DELETE) en todas las tablas de
+    // la app. Cuando otro dispositivo guarda algo, este callback se
+    // dispara aquí también, para que la pantalla se refresque sola sin
+    // que el usuario tenga que recargar la página manualmente.
+    let realtimeChannel = null;
+    function subscribeRealtime(onChange) {
+        if (!supabaseClient) {
+            // Si initSupabase() no se ha llamado aún (get()/save() no
+            // corrieron todavía), lo forzamos antes de suscribir.
+            initSupabase().then(() => subscribeRealtime(onChange));
+            return;
+        }
+        if (realtimeChannel) return; // ya suscrito, evita duplicar
+
+        const allTables = Object.values(window.APP_CONFIG.supabase.tables);
+        let channel = supabaseClient.channel('abrilcita-changes');
+        allTables.forEach(table => {
+            channel = channel.on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table },
+                (payload) => onChange(table, payload)
+            );
+        });
+        channel.subscribe();
+        realtimeChannel = channel;
+    }
+
+    function unsubscribeRealtime() {
+        if (realtimeChannel) {
+            supabaseClient.removeChannel(realtimeChannel);
+            realtimeChannel = null;
+        }
+    }
+
     return {
         get, save, deleteAll, genId, uploadPhoto,
         saveProfile, saveFoodData, saveVaccines, saveDeworming,
         saveControls, saveNotes, saveFoodChanges, saveWeights, saveMedications,
         deleteWeight, deleteVaccine, deleteDeworming, deleteControl,
-        deleteNote, deleteFoodChange, deleteMedication
+        deleteNote, deleteFoodChange, deleteMedication,
+        subscribeRealtime, unsubscribeRealtime
     };
 })();
 

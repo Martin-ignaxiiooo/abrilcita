@@ -80,14 +80,21 @@ const APP = (function () {
     }
 
     // Protege un handler de doble-click: deshabilita el botón durante la ejecución
+    // También marca una "ventana de silencio" para Realtime: si este mismo
+    // dispositivo acaba de guardar/borrar algo, el eco que Supabase manda de
+    // vuelta no debe mostrar el toast de "actualizado desde otro dispositivo".
     function guard(fn, btn, msg) {
         return async function () {
             if (!btn || btn.disabled) return;
             const state = using(btn, msg);
-            try { await fn(); } catch (e) { console.error(e); toast('Error al guardar: ' + e.message, 'error'); }
+            try {
+                await fn();
+                lastLocalWriteAt = Date.now();
+            } catch (e) { console.error(e); toast('Error al guardar: ' + e.message, 'error'); }
             finally { state.end(); }
         };
     }
+    let lastLocalWriteAt = 0;
 
     // Sincroniza el estado del elemento con su error en vivo
     function setFieldError(input, message) {
@@ -237,15 +244,38 @@ const APP = (function () {
 
         // Listener de cambio de ruta
         document.addEventListener('route:change', (e) => {
-            const page = e.detail.page;
-            if (page === 'inicio') { renderHome(); renderDietStats(); }
-            if (page === 'vacunas') renderAllVaccines();
-            if (page === 'desparasitacion') renderAllDeworming();
-            if (page === 'alimentacion') { loadFoodForm(); renderDietStats(); renderWeightChart(); renderWeightList(); renderMealSchedule(); renderFoodHistory(); }
-            if (page === 'controles') { renderVisits(); renderMedications(); }
-            if (page === 'historial') renderHistory();
+            renderPage(e.detail.page);
             refreshIcons();
         });
+
+        // Realtime: cuando otro dispositivo guarda o borra algo, refresca
+        // la pantalla actual automáticamente (sin que el usuario recargue).
+        // Se usa un pequeño debounce porque una sola acción del usuario
+        // (ej. guardar perfil) puede disparar varios eventos seguidos.
+        let realtimeDebounce = null;
+        DB.subscribeRealtime(() => {
+            clearTimeout(realtimeDebounce);
+            realtimeDebounce = setTimeout(() => {
+                renderPage(ROUTER.getCurrent());
+                refreshIcons();
+                // Solo avisamos si el cambio no vino de una acción reciente
+                // de este mismo dispositivo (evita el toast "de otro
+                // dispositivo" cuando en realidad fue uno mismo quien guardó).
+                const recentLocalWrite = (Date.now() - lastLocalWriteAt) < 2000;
+                if (!recentLocalWrite) toast('Datos actualizados desde otro dispositivo.');
+            }, 400);
+        });
+    }
+
+    // Renderiza las secciones correspondientes a una página. Se usa tanto
+    // al navegar como cuando llega un cambio en tiempo real de Supabase.
+    function renderPage(page) {
+        if (page === 'inicio') { renderHome(); renderDietStats(); }
+        if (page === 'vacunas') renderAllVaccines();
+        if (page === 'desparasitacion') renderAllDeworming();
+        if (page === 'alimentacion') { loadFoodForm(); renderDietStats(); renderWeightChart(); renderWeightList(); renderMealSchedule(); renderFoodHistory(); }
+        if (page === 'controles') { renderVisits(); renderMedications(); }
+        if (page === 'historial') renderHistory();
     }
 
     // ============ FOTO ============
@@ -346,10 +376,16 @@ const APP = (function () {
             if ($('homeName')) $('homeName').textContent = p.name || 'Sin nombre';
             if ($('homeAge')) $('homeAge').textContent = calcAge(p.birth);
             if ($('homeWeight')) $('homeWeight').textContent = (p.weight ? p.weight + ' kg' : '—');
-            // Pre-cargar formulario de perfil
-            setVal('pName', p.name); setVal('pBirth', p.birth); setVal('pBreed', p.breed);
-            setVal('pWeight', p.weight); setVal('pSex', p.sex); setVal('pColor', p.color);
-            setVal('pVet', p.vet); setVal('pVetPhone', p.vetPhone); setVal('pRut', p.rut);
+            // Pre-cargar formulario de perfil (salvo que la persona esté con
+            // el foco dentro del formulario, para no pisar lo que escribe si
+            // llega un cambio en tiempo real de otro dispositivo)
+            const editCard = $('profileEditCard');
+            const isEditingProfile = editCard && document.activeElement && editCard.contains(document.activeElement);
+            if (!isEditingProfile) {
+                setVal('pName', p.name); setVal('pBirth', p.birth); setVal('pBreed', p.breed);
+                setVal('pWeight', p.weight); setVal('pSex', p.sex); setVal('pColor', p.color);
+                setVal('pVet', p.vet); setVal('pVetPhone', p.vetPhone); setVal('pRut', p.rut);
+            }
 
             // Health status
             const total = (db.vaccines || []).length + (db.deworming || []).length + (db.controls || []).length;
@@ -888,6 +924,12 @@ const APP = (function () {
     function loadFoodForm() {
         safeGet(db => {
             const f = db.food || {};
+            // Si el usuario tiene el editor de alimentación abierto, no pisamos
+            // lo que esté escribiendo (ej. si llega un cambio en tiempo real
+            // de otro dispositivo mientras está editando).
+            const editCard = $('dietEditCard');
+            const isEditing = editCard && editCard.style.display !== 'none';
+            if (isEditing && document.activeElement && editCard.contains(document.activeElement)) return;
             setVal('foodType', f.type); setVal('foodBrand', f.brand); setVal('foodAmount', f.amount);
             setVal('foodCost', f.cost); setVal('foodNotes', f.notes); setVal('foodSupplements', f.supplements);
             setVal('foodTreats', f.treats); setVal('foodRestrictions', f.restrictions);

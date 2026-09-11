@@ -180,3 +180,20 @@ create policy "Allow full access medications" on public.medications for all usin
 --    punto E por políticas basadas en auth.uid() y agrega una
 --    columna user_id a cada tabla. No lo necesitas ahora.
 -- ============================================================
+
+-- ============================================================
+-- G) REALTIME (sincronización automática entre dispositivos)
+--    Habilita que la app reciba notificaciones instantáneas cuando
+--    cualquier dispositivo agrega, edita o borra un registro, para
+--    que las demás pantallas abiertas se actualicen solas.
+-- ============================================================
+alter publication supabase_realtime add table public.profile;
+alter publication supabase_realtime add table public.vaccines;
+alter publication supabase_realtime add table public.deworming;
+alter publication supabase_realtime add table public.controls;
+alter publication supabase_realtime add table public.notes;
+alter publication supabase_realtime add table public.food;
+alter publication supabase_realtime add table public.food_changes;
+alter publication supabase_realtime add table public.weights;
+alter publication supabase_realtime add table public.medications;
+
